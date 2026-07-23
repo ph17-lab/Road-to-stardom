@@ -29,7 +29,7 @@ Você escolhe apenas **nome e altura** — a carreira sempre começa aos **15 an
 - **Lesões** (leve/moderada/grave) que afastam o jogador por semanas.
 - **Sistema de propostas e transferências**: aceitar, recusar ou negociar salário; janelas nas semanas 2–5 e 20–24; mercado de IA ativo.
 - **Ligas e tabelas**: ~230 clubes em 15 ligas (Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Brasileirão, e mais) todas simuladas rodada a rodada.
-- **Copas nacionais, Champions League, Libertadores, continentais e Mundial de Clubes.**
+- **Copas nacionais, Champions League, Libertadores, continentais e Mundial de Clubes** — a classificação continental vem da posição na tabela da temporada anterior (ex.: G3 da Premier League → Champions; G8 do Brasileirão → Libertadores), com a zona de classificação destacada na tabela.
 - **Seleção nacional**: convocações por overall/reputação, amistosos em datas FIFA, Copa do Mundo e torneios continentais.
 - **Prêmios**: artilheiro, melhor jovem, melhor da liga, time da temporada e **Bola de Ouro**.
 - **Títulos e histórico** completos, temporada a temporada.

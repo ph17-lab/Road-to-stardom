@@ -10,12 +10,36 @@ export const CONTINENTAL_WEEKS = [10, 18, 26, 34];
 export const NAT_WINDOW_WEEKS = [16, 32];
 export const WORLD_CLUB_CUP_WEEK = 39;
 
+// Vagas por liga: quem termina bem na tabela vai para a competição
+// continental na temporada seguinte (ex.: G3 da Premier League → Champions).
 export const CONTINENTAL_DEFS = [
-  { id: 'UCL', name: 'Champions League', conf: 'UEFA', size: 16 },
-  { id: 'LIB', name: 'Copa Libertadores', conf: 'CONMEBOL', size: 16 },
-  { id: 'CCC', name: 'Champions Cup CONCACAF', conf: 'CONCACAF', size: 8 },
-  { id: 'ACL', name: 'Champions League Asiática', conf: 'AFC', size: 8 },
+  {
+    id: 'UCL', name: 'Champions League', conf: 'UEFA', size: 16,
+    slots: { ENG1: 3, ESP1: 2, GER1: 2, ITA1: 2, FRA1: 2, POR1: 1, NED1: 1, BEL1: 1, TUR1: 1, SCO1: 1 },
+  },
+  {
+    id: 'LIB', name: 'Copa Libertadores', conf: 'CONMEBOL', size: 16,
+    slots: { BRA1: 8, ARG1: 8 },
+  },
+  {
+    id: 'CCC', name: 'Champions Cup CONCACAF', conf: 'CONCACAF', size: 8,
+    slots: { USA1: 4, MEX1: 4 },
+  },
+  {
+    id: 'ACL', name: 'Champions League Asiática', conf: 'AFC', size: 8,
+    slots: { SAU1: 8 },
+  },
 ];
+
+// Quantas vagas continentais uma liga tem (para a UI destacar a zona de classificação)
+export function slotsForLeague(leagueId) {
+  for (const def of CONTINENTAL_DEFS) {
+    if (def.slots && def.slots[leagueId]) {
+      return { n: def.slots[leagueId], name: def.name };
+    }
+  }
+  return null;
+}
 
 function confOfLeague(G, league) {
   return (NATIONS[league.country] || {}).conf;
@@ -49,25 +73,35 @@ export function initContinentals(G) {
   for (const def of CONTINENTAL_DEFS) {
     const leagues = G.leagues.filter((l) => confOfLeague(G, l) === def.conf);
     if (leagues.length === 0) continue;
-    // campeões da temporada anterior + melhores clubes por reputação/campanha
+    // Classificados pela POSIÇÃO NA TABELA da temporada anterior.
+    // Na primeira temporada (sem tabela) usa a ordem de reputação.
     const picked = new Set();
     for (const l of leagues) {
-      if (l.lastChampionId !== null) picked.add(l.lastChampionId);
+      const n = (def.slots && def.slots[l.id]) || 1;
+      const order = (l.lastStandings && l.lastStandings.length > 0)
+        ? l.lastStandings
+        : l.clubIds.slice().sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
+      for (const id of order.slice(0, n)) picked.add(id);
     }
-    const pool = leagues
-      .flatMap((l) => l.clubIds)
-      .filter((id) => !picked.has(id))
-      .sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
-    for (const id of pool) {
-      if (picked.size >= def.size) break;
-      picked.add(id);
+    // completa vagas restantes com os melhores clubes de fora, se faltar
+    if (picked.size < def.size) {
+      const pool = leagues
+        .flatMap((l) => l.clubIds)
+        .filter((id) => !picked.has(id))
+        .sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
+      for (const id of pool) {
+        if (picked.size >= def.size) break;
+        picked.add(id);
+      }
     }
+    const teams = [...picked].slice(0, def.size);
     const rounds = Math.log2(def.size);
     G.continentals.push({
       id: def.id,
       name: def.name,
       conf: def.conf,
-      alive: shuffle([...picked]),
+      teams: teams.slice(), // lista de classificados (fixa; alive muda a cada fase)
+      alive: shuffle(teams),
       roundWeeks: CONTINENTAL_WEEKS.slice(CONTINENTAL_WEEKS.length - rounds),
       roundIdx: 0,
       pending: null,

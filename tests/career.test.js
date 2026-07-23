@@ -281,6 +281,29 @@ test('jogador com potencial alto atinge nível de elite e recebe prêmios/convoc
   assert.ok(titles > 0, 'deve conquistar títulos ao longo das carreiras');
 });
 
+test('classificação continental vem da posição na tabela da temporada anterior', () => {
+  const G = makeGame({ seed: 31 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  for (let w = 0; w < SEASON_WEEKS; w++) advanceWeek(G); // fecha a temporada 1
+
+  // G3 da Premier League vai para a Champions League
+  const eng = G.leagues.find((l) => l.id === 'ENG1');
+  const ucl = G.continentals.find((c) => c.id === 'UCL');
+  for (const id of eng.lastStandings.slice(0, 3)) {
+    assert.ok(ucl.teams.includes(id), `${G.clubs[id].name} (top 3 da Premier) deveria estar na Champions`);
+  }
+  // G8 do Brasileirão vai para a Libertadores
+  const bra = G.leagues.find((l) => l.id === 'BRA1');
+  const lib = G.continentals.find((c) => c.id === 'LIB');
+  for (const id of bra.lastStandings.slice(0, 8)) {
+    assert.ok(lib.teams.includes(id), `${G.clubs[id].name} (G8 do Brasileirão) deveria estar na Libertadores`);
+  }
+  // quem terminou no meio da tabela europeia não entra
+  const mid = eng.lastStandings[10];
+  assert.ok(!ucl.teams.includes(mid), 'clube de meio de tabela não deve ir para a Champions');
+});
+
 test('save e load preservam o estado', () => {
   const G = makeGame({ seed: 99 });
   doRollAcademy(G);

@@ -8,7 +8,7 @@ import {
 } from '../core/engine.js';
 import { saveToStorage, loadFromStorage, clearStorage, serialize, deserialize } from '../core/save.js';
 import { POSITION_NAMES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
-import { callupThreshold, isCalledUp, roundName } from '../core/competitions.js';
+import { callupThreshold, isCalledUp, roundName, slotsForLeague } from '../core/competitions.js';
 
 let G = null;
 let activeTab = 'overview';
@@ -486,6 +486,7 @@ function renderTables(el) {
   const standings = tableStandings(league);
   const cup = G.cups[league.id];
   const n = standings.length;
+  const slot = slotsForLeague(league.id); // vagas continentais desta liga
 
   el.innerHTML = `
     <select id="league-select" class="inline">
@@ -501,7 +502,8 @@ function renderTables(el) {
             const t = league.table[id];
             const mine = G.player.clubId === id;
             let posCls = '';
-            if (i < 4) posCls = 'ucl'; else if (i < 6) posCls = 'uel'; else if (i >= n - 3) posCls = 'rel';
+            if (slot && i < slot.n) posCls = 'ucl';
+            else if (i >= n - 3) posCls = 'rel';
             return `<tr class="${mine ? 'highlight' : ''}">
               <td><span class="pos-badge ${posCls}">${i + 1}</span></td>
               <td><div class="club-cell"><span class="club-dot" style="background:${clubDotColor(c)}"></span>${c.name}${mine ? ' 👈' : ''}</div></td>
@@ -513,8 +515,7 @@ function renderTables(el) {
         </table>
       </div>
       <div class="faint" style="font-size:.74rem;margin-top:8px">
-        <span class="pos-badge ucl" style="width:14px;height:14px">·</span> Continental principal ·
-        <span class="pos-badge uel" style="width:14px;height:14px">·</span> Continental secundária ·
+        ${slot ? `<span class="pos-badge ucl" style="width:14px;height:14px">·</span> ${slot.name} (${slot.n} vaga${slot.n > 1 ? 's' : ''} pela tabela) · ` : ''}
         <span class="pos-badge rel" style="width:14px;height:14px">·</span> Rebaixamento
       </div>
     </div>
@@ -770,7 +771,7 @@ function doAdvance(weeks) {
   btn.disabled = false; btn4.disabled = false;
   renderHeader();
   renderTab();
-  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth'].includes(e.type));
+  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified'].includes(e.type));
   showNextEvent();
 }
 
@@ -811,7 +812,7 @@ function showNextEvent() {
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
     const gold = e.type === 'title' || e.type === 'award';
-    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈' }[e.type] || '📢';
+    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟' }[e.type] || '📢';
     box.innerHTML = `<div class="event-line ${gold ? 'gold-ev' : 'big'}"><span class="event-emoji">${emoji}</span>${e.text}</div>`;
     $('#modal-close').textContent = 'Ok';
   }

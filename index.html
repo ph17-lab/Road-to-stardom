@@ -1901,12 +1901,36 @@ const CONTINENTAL_WEEKS = [10, 18, 26, 34];
 const NAT_WINDOW_WEEKS = [16, 32];
 const WORLD_CLUB_CUP_WEEK = 39;
 
+// Vagas por liga: quem termina bem na tabela vai para a competição
+// continental na temporada seguinte (ex.: G3 da Premier League → Champions).
 const CONTINENTAL_DEFS = [
-  { id: 'UCL', name: 'Champions League', conf: 'UEFA', size: 16 },
-  { id: 'LIB', name: 'Copa Libertadores', conf: 'CONMEBOL', size: 16 },
-  { id: 'CCC', name: 'Champions Cup CONCACAF', conf: 'CONCACAF', size: 8 },
-  { id: 'ACL', name: 'Champions League Asiática', conf: 'AFC', size: 8 },
+  {
+    id: 'UCL', name: 'Champions League', conf: 'UEFA', size: 16,
+    slots: { ENG1: 3, ESP1: 2, GER1: 2, ITA1: 2, FRA1: 2, POR1: 1, NED1: 1, BEL1: 1, TUR1: 1, SCO1: 1 },
+  },
+  {
+    id: 'LIB', name: 'Copa Libertadores', conf: 'CONMEBOL', size: 16,
+    slots: { BRA1: 8, ARG1: 8 },
+  },
+  {
+    id: 'CCC', name: 'Champions Cup CONCACAF', conf: 'CONCACAF', size: 8,
+    slots: { USA1: 4, MEX1: 4 },
+  },
+  {
+    id: 'ACL', name: 'Champions League Asiática', conf: 'AFC', size: 8,
+    slots: { SAU1: 8 },
+  },
 ];
+
+// Quantas vagas continentais uma liga tem (para a UI destacar a zona de classificação)
+function slotsForLeague(leagueId) {
+  for (const def of CONTINENTAL_DEFS) {
+    if (def.slots && def.slots[leagueId]) {
+      return { n: def.slots[leagueId], name: def.name };
+    }
+  }
+  return null;
+}
 
 function confOfLeague(G, league) {
   return (NATIONS[league.country] || {}).conf;
@@ -1940,25 +1964,35 @@ function initContinentals(G) {
   for (const def of CONTINENTAL_DEFS) {
     const leagues = G.leagues.filter((l) => confOfLeague(G, l) === def.conf);
     if (leagues.length === 0) continue;
-    // campeões da temporada anterior + melhores clubes por reputação/campanha
+    // Classificados pela POSIÇÃO NA TABELA da temporada anterior.
+    // Na primeira temporada (sem tabela) usa a ordem de reputação.
     const picked = new Set();
     for (const l of leagues) {
-      if (l.lastChampionId !== null) picked.add(l.lastChampionId);
+      const n = (def.slots && def.slots[l.id]) || 1;
+      const order = (l.lastStandings && l.lastStandings.length > 0)
+        ? l.lastStandings
+        : l.clubIds.slice().sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
+      for (const id of order.slice(0, n)) picked.add(id);
     }
-    const pool = leagues
-      .flatMap((l) => l.clubIds)
-      .filter((id) => !picked.has(id))
-      .sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
-    for (const id of pool) {
-      if (picked.size >= def.size) break;
-      picked.add(id);
+    // completa vagas restantes com os melhores clubes de fora, se faltar
+    if (picked.size < def.size) {
+      const pool = leagues
+        .flatMap((l) => l.clubIds)
+        .filter((id) => !picked.has(id))
+        .sort((a, b) => (G.clubs[b].rep * 10 + G.clubs[b].avgOvr) - (G.clubs[a].rep * 10 + G.clubs[a].avgOvr));
+      for (const id of pool) {
+        if (picked.size >= def.size) break;
+        picked.add(id);
+      }
     }
+    const teams = [...picked].slice(0, def.size);
     const rounds = Math.log2(def.size);
     G.continentals.push({
       id: def.id,
       name: def.name,
       conf: def.conf,
-      alive: shuffle([...picked]),
+      teams: teams.slice(), // lista de classificados (fixa; alive muda a cada fase)
+      alive: shuffle(teams),
       roundWeeks: CONTINENTAL_WEEKS.slice(CONTINENTAL_WEEKS.length - rounds),
       roundIdx: 0,
       pending: null,
@@ -2791,6 +2825,19 @@ function endSeason(G, events) {
   startSeasonStructures(G);
   addNews(G, `Começa a temporada ${G.seasonYear}! Boa sorte.`);
   events.push({ type: 'newSeason', text: `Nova temporada: ${G.seasonYear}. Você tem ${p.age} anos.` });
+
+  // Destaque na tabela = vaga continental: avisa se o clube do jogador se classificou
+  const newClub = playerClub(G);
+  if (newClub) {
+    for (const comp of G.continentals) {
+      if (comp.teams && comp.teams.includes(newClub.id)) {
+        addNews(G, `${newClub.name} garante vaga na ${comp.name} pela campanha na liga.`);
+        if (!p.youth) {
+          events.push({ type: 'qualified', text: `🌟 Classificado! O ${newClub.name} vai disputar a ${comp.name} nesta temporada!` });
+        }
+      }
+    }
+  }
 }
 
 // Mundo vivo: jogadores de IA evoluem, envelhecem, se aposentam; técnicos mudam.
@@ -3460,6 +3507,7 @@ function renderTables(el) {
   const standings = tableStandings(league);
   const cup = G.cups[league.id];
   const n = standings.length;
+  const slot = slotsForLeague(league.id); // vagas continentais desta liga
 
   el.innerHTML = `
     <select id="league-select" class="inline">
@@ -3475,7 +3523,8 @@ function renderTables(el) {
             const t = league.table[id];
             const mine = G.player.clubId === id;
             let posCls = '';
-            if (i < 4) posCls = 'ucl'; else if (i < 6) posCls = 'uel'; else if (i >= n - 3) posCls = 'rel';
+            if (slot && i < slot.n) posCls = 'ucl';
+            else if (i >= n - 3) posCls = 'rel';
             return `<tr class="${mine ? 'highlight' : ''}">
               <td><span class="pos-badge ${posCls}">${i + 1}</span></td>
               <td><div class="club-cell"><span class="club-dot" style="background:${clubDotColor(c)}"></span>${c.name}${mine ? ' 👈' : ''}</div></td>
@@ -3487,8 +3536,7 @@ function renderTables(el) {
         </table>
       </div>
       <div class="faint" style="font-size:.74rem;margin-top:8px">
-        <span class="pos-badge ucl" style="width:14px;height:14px">·</span> Continental principal ·
-        <span class="pos-badge uel" style="width:14px;height:14px">·</span> Continental secundária ·
+        ${slot ? `<span class="pos-badge ucl" style="width:14px;height:14px">·</span> ${slot.name} (${slot.n} vaga${slot.n > 1 ? 's' : ''} pela tabela) · ` : ''}
         <span class="pos-badge rel" style="width:14px;height:14px">·</span> Rebaixamento
       </div>
     </div>
@@ -3744,7 +3792,7 @@ function doAdvance(weeks) {
   btn.disabled = false; btn4.disabled = false;
   renderHeader();
   renderTab();
-  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth'].includes(e.type));
+  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified'].includes(e.type));
   showNextEvent();
 }
 
@@ -3785,7 +3833,7 @@ function showNextEvent() {
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
     const gold = e.type === 'title' || e.type === 'award';
-    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈' }[e.type] || '📢';
+    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟' }[e.type] || '📢';
     box.innerHTML = `<div class="event-line ${gold ? 'gold-ev' : 'big'}"><span class="event-emoji">${emoji}</span>${e.text}</div>`;
     $('#modal-close').textContent = 'Ok';
   }

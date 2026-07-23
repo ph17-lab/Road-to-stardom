@@ -709,6 +709,19 @@ function endSeason(G, events) {
   startSeasonStructures(G);
   addNews(G, `Começa a temporada ${G.seasonYear}! Boa sorte.`);
   events.push({ type: 'newSeason', text: `Nova temporada: ${G.seasonYear}. Você tem ${p.age} anos.` });
+
+  // Destaque na tabela = vaga continental: avisa se o clube do jogador se classificou
+  const newClub = playerClub(G);
+  if (newClub) {
+    for (const comp of G.continentals) {
+      if (comp.teams && comp.teams.includes(newClub.id)) {
+        addNews(G, `${newClub.name} garante vaga na ${comp.name} pela campanha na liga.`);
+        if (!p.youth) {
+          events.push({ type: 'qualified', text: `🌟 Classificado! O ${newClub.name} vai disputar a ${comp.name} nesta temporada!` });
+        }
+      }
+    }
+  }
 }
 
 // Mundo vivo: jogadores de IA evoluem, envelhecem, se aposentam; técnicos mudam.
