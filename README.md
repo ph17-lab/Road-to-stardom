@@ -6,24 +6,21 @@ Feito em **HTML + CSS + JavaScript puro** (sem dependências), com interface **r
 
 ## Como jogar
 
-O jogo precisa ser servido por um servidor HTTP (por usar módulos ES):
+O `index.html` é **auto-contido** (CSS e JavaScript embutidos). Não precisa de servidor nem de instalação:
 
-```bash
-# na pasta do projeto (qualquer opção funciona)
-npm start                      # usa python3 -m http.server 8080
-# ou
-python3 -m http.server 8080
-# ou
-npx http-server -p 8080
-```
+- **No celular**: baixe apenas o arquivo `index.html` e abra no navegador (Chrome, etc.). Pronto.
+- **No PC**: dê dois cliques no `index.html`, ou sirva com `npm start` e abra http://localhost:8080.
 
-Depois abra **http://localhost:8080** no navegador (funciona também no celular, na mesma rede).
+O progresso é salvo automaticamente no navegador, e dá para exportar/importar o save como arquivo.
+
+### Criação do jogador
+
+Você escolhe apenas **nome e altura** — a carreira sempre começa aos **15 anos** na base de um clube do Brasil. Posição, pé dominante, estilo de jogo e número da camisa são revelados no **sorteio da academia** (e mudam a cada re-rolagem, até 3 vezes).
 
 ## Funcionalidades
 
-- **Criação do jogador**: nome, idade (14–18), nacionalidade, pé, posição (11 posições incl. goleiro), altura, camisa e estilo de jogo.
-- **Escolha da região de origem**: 15 países com ligas no banco de dados influenciam os clubes disponíveis.
-- **Base roletada**: sorteio animado da academia inicial, ponderado pela reputação — academias de elite são raras. Até 3 re-rolagens.
+- **Criação do jogador**: nome e altura; a carreira começa sempre aos 15 anos. (O motor também suporta idade, posição, país e estilo customizados, usados pelos testes.)
+- **Base roletada**: sorteio animado da academia inicial, ponderado pela reputação — academias de elite são raras. Até 3 re-rolagens. A roleta também define posição (11 posições incl. goleiro), pé dominante, estilo de jogo e camisa.
 - **Categorias de base**: Sub-15 / Sub-17 / Sub-20, com overall inicial compatível com a idade e a academia.
 - **Atributos completos** por grupo (ataque, passe, drible, defesa, físico, goleiro) com **overall calculado por posição**.
 - **Desenvolvimento**: potencial, idade, minutos, notas, treino com foco escolhido, qualidade da estrutura e nível da liga — com declínio físico após os 32.
@@ -43,7 +40,9 @@ Depois abra **http://localhost:8080** no navegador (funciona também no celular,
 ## Arquitetura
 
 ```
-index.html            interface (SPA)
+index.html            ARQUIVO GERADO — jogo completo em um único arquivo
+build.js              empacotador (npm run build regenera o index.html)
+src/ui/template.html  estrutura HTML usada pelo build
 css/style.css         tema responsivo
 src/data/             banco de dados (ligas, clubes, países, nomes)
 src/core/             motor de simulação (puro, roda em Node sem DOM)
@@ -61,7 +60,7 @@ src/ui/app.js         camada de interface
 tests/                testes de ponta a ponta (carreiras inteiras headless)
 ```
 
-Para adicionar uma liga, basta acrescentar um objeto em `src/data/leagues.js` — o resto do jogo (copas, continentais, mercado) a incorpora automaticamente.
+Para adicionar uma liga, basta acrescentar um objeto em `src/data/leagues.js` — o resto do jogo (copas, continentais, mercado) a incorpora automaticamente. Depois de mudar qualquer arquivo em `src/` ou `css/`, rode `npm run build` para regenerar o `index.html`.
 
 ## Testes
 

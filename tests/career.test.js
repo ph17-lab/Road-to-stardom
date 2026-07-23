@@ -54,6 +54,40 @@ test('atributos e overall coerentes para todas as posições', () => {
   }
 });
 
+test('criação simplificada: só nome e altura; 15 anos fixo e perfil sorteado na roleta', () => {
+  const G = newGame({ firstName: 'Ana', lastName: 'Souza', height: 170, seed: 77 });
+  assert.equal(G.player.age, 15, 'idade sempre começa em 15');
+  assert.equal(G.country, 'Brasil', 'país padrão é o Brasil');
+  assert.equal(G.player.nationality, 'Brasil');
+  const r1 = doRollAcademy(G);
+  assert.ok(POSITIONS.includes(r1.position), 'roleta sorteia uma posição válida');
+  assert.ok(['Direito', 'Esquerdo', 'Ambidestro'].includes(r1.foot));
+  assert.ok(typeof r1.style === 'string' && r1.style.length > 0);
+  assert.ok(r1.shirt >= 1 && r1.shirt <= 99);
+  // re-rolagens continuam sorteando perfis válidos
+  const positions = new Set([r1.position]);
+  for (let i = 0; i < MAX_REROLLS; i++) {
+    const r = doRollAcademy(G);
+    assert.ok(POSITIONS.includes(r.position));
+    positions.add(r.position);
+  }
+  confirmAcademy(G);
+  assert.equal(G.player.position, G.lastRoll.position, 'posição do jogador é a do sorteio confirmado');
+  assert.equal(G.player.category, 'Sub-15');
+  // a carreira roda normalmente com o perfil sorteado
+  for (let w = 0; w < 10; w++) advanceWeek(G);
+  assert.ok(G.player.seasonStats.apps > 0);
+});
+
+test('perfil fixado na criação é respeitado pela roleta', () => {
+  const G = makeGame({ seed: 88, position: 'GK', style: 'Completo', foot: 'Esquerdo' });
+  for (let i = 0; i <= MAX_REROLLS; i++) {
+    const r = doRollAcademy(G);
+    assert.equal(r.position, 'GK');
+    assert.equal(r.foot, 'Esquerdo');
+  }
+});
+
 test('roleta da academia: sorteia clube do país, respeita limite de re-rolagens', () => {
   const G = makeGame();
   const roll1 = doRollAcademy(G);

@@ -40,6 +40,18 @@ html, body {
 
 #app { max-width: 1120px; margin: 0 auto; padding: 14px 14px 0; }
 
+/* Banner de erro (aparece se o JavaScript falhar, ex.: cache antigo) */
+#err-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: linear-gradient(135deg, #7a1f2b, #a32638);
+  color: #fff; text-align: center; padding: 12px 14px;
+  font-size: .92rem; font-weight: 600;
+}
+#err-banner button {
+  margin-left: 10px; background: #fff; color: #7a1f2b; border: none;
+  border-radius: 8px; padding: 7px 14px; font-weight: 800; cursor: pointer; font-family: inherit;
+}
+
 .screen { display: none; }
 .screen.active { display: block; animation: fadein .3s cubic-bezier(.2,.7,.3,1); }
 @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -159,10 +171,41 @@ small { font-size: .8rem; }
 .chip .flag { margin-right: 5px; }
 .chips.compact .chip { padding: 8px 13px; font-size: .88rem; }
 
-.stepper { display: inline-flex; align-items: center; gap: 0; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm); overflow: hidden; }
-.stepper button { background: transparent; border: none; color: var(--text); font-size: 1.4rem; width: 48px; height: 48px; cursor: pointer; font-family: inherit; }
-.stepper button:active { background: var(--card2); }
-.stepper .val { min-width: 74px; text-align: center; font-size: 1.15rem; font-weight: 800; }
+/* Slider de altura (controle nativo, funciona em qualquer navegador) */
+.field input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.field input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent-d), var(--accent));
+  border: 1px solid var(--border2);
+}
+.field input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent);
+  margin-top: -10px;
+  box-shadow: 0 4px 12px -2px #000a;
+}
+.field input[type="range"]::-moz-range-track {
+  height: 10px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--accent-d), var(--accent));
+}
+.field input[type="range"]::-moz-range-thumb {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent);
+}
+.range-ends { display: flex; justify-content: space-between; color: var(--faint); font-size: .74rem; margin-top: 2px; }
+.field label output { color: var(--accent); font-size: 1rem; font-weight: 900; margin-left: 4px; }
 
 .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
 .style-desc { font-size: .82rem; color: var(--faint); margin-top: 8px; min-height: 1.1em; }
@@ -190,7 +233,7 @@ small { font-size: .8rem; }
 @keyframes blink { 50% { opacity: .4; } }
 .roll-result { text-align: center; margin: 16px 0; animation: fadein .35s ease; }
 .roll-result h3 { font-size: 1.35rem; justify-content: center; }
-.roll-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 520px; margin: 14px auto 0; }
+.roll-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 520px; margin: 14px auto 0; }
 @media (max-width: 520px) { .roll-stats { grid-template-columns: 1fr 1fr; } }
 
 /* ---------- Tiles (mini estatística) ---------- */
@@ -208,6 +251,7 @@ small { font-size: .8rem; }
 .tile.green .t-val { color: var(--accent); }
 .stat-chip { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 12px; text-align: center; font-size: .78rem; color: var(--muted); }
 .stat-chip strong { display: block; color: var(--text); font-size: 1.35rem; font-weight: 900; margin-top: 2px; }
+.stat-chip strong.small-strong { font-size: 1rem; }
 
 /* ---------- Anel de Overall ---------- */
 .ovr-ring {

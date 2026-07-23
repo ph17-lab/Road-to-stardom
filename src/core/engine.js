@@ -30,7 +30,14 @@ export function newGame(cfg) {
     seasonNumber: 1,
     week: 1,
     phase: 'roll', // roll -> career -> retired
-    country: cfg.country,
+    country: cfg.country || 'Brasil',
+    // Campos fixados na criação; o que ficar null é sorteado pela roleta
+    customProfile: {
+      position: cfg.position || null,
+      foot: cfg.foot || null,
+      style: cfg.style || null,
+      shirt: cfg.shirt || null,
+    },
     rerollsLeft: MAX_REROLLS,
     lastRoll: null,
     clubs: world.clubs,
@@ -46,7 +53,7 @@ export function newGame(cfg) {
     wantRetire: false,
   };
   startSeasonStructures(G);
-  addNews(G, `Sua jornada começa. Olheiros de ${cfg.country} estão avaliando jovens talentos.`);
+  addNews(G, `Sua jornada começa. Olheiros de ${G.country} estão avaliando jovens talentos.`);
   return G;
 }
 

@@ -15,24 +15,40 @@ export function deserialize(json) {
   return data.state;
 }
 
-// Wrappers de localStorage (a UI usa; os testes usam serialize/deserialize direto)
-export function saveToStorage(G, storage = globalThis.localStorage) {
-  if (!storage) return false;
-  storage.setItem(SAVE_KEY, serialize(G));
-  return true;
+// Em alguns contextos (arquivo aberto direto no celular) o acesso ao
+// localStorage pode lançar SecurityError — nunca deixe isso derrubar o jogo.
+function defaultStorage() {
+  try {
+    return globalThis.localStorage || null;
+  } catch {
+    return null;
+  }
 }
 
-export function loadFromStorage(storage = globalThis.localStorage) {
-  if (!storage) return null;
-  const raw = storage.getItem(SAVE_KEY);
-  if (!raw) return null;
+// Wrappers de localStorage (a UI usa; os testes usam serialize/deserialize direto)
+export function saveToStorage(G, storage = defaultStorage()) {
+  if (!storage) return false;
   try {
+    storage.setItem(SAVE_KEY, serialize(G));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function loadFromStorage(storage = defaultStorage()) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(SAVE_KEY);
+    if (!raw) return null;
     return deserialize(raw);
   } catch {
     return null;
   }
 }
 
-export function clearStorage(storage = globalThis.localStorage) {
-  if (storage) storage.removeItem(SAVE_KEY);
+export function clearStorage(storage = defaultStorage()) {
+  try {
+    if (storage) storage.removeItem(SAVE_KEY);
+  } catch { /* sem armazenamento disponível */ }
 }

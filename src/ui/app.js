@@ -6,8 +6,7 @@ import {
   playerClub, playerLeague, avgRating, fullName, tableStandings,
 } from '../core/engine.js';
 import { saveToStorage, loadFromStorage, clearStorage, serialize, deserialize } from '../core/save.js';
-import { POSITIONS, POSITION_NAMES, PLAYER_STYLES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
-import { NATIONS, ORIGIN_COUNTRIES } from '../data/nations.js';
+import { POSITION_NAMES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
 import { callupThreshold, isCalledUp, roundName } from '../core/competitions.js';
 
 let G = null;
@@ -26,16 +25,6 @@ const FLAGS = {
   'Nigéria': '🇳🇬', 'Senegal': '🇸🇳', 'Gana': '🇬🇭', 'Marrocos': '🇲🇦',
 };
 const flag = (n) => FLAGS[n] || '🏳️';
-
-const STYLE_DESC = {
-  'Finalizador': 'Faro de gol — finalização, posicionamento e voleios.',
-  'Craque técnico': 'Magia com a bola — drible, controle e visão.',
-  'Velocista': 'Explosão pura — velocidade, aceleração e agilidade.',
-  'Motor (box-to-box)': 'Pulmão infinito — resistência, desarme e chutes de longe.',
-  'Cérebro (armador)': 'O maestro — visão e passes curtos e longos.',
-  'Muralha (defensivo)': 'Intransponível — marcação, posicionamento e força.',
-  'Completo': 'Equilibrado em todas as áreas do jogo.',
-};
 
 const POS_GROUP_ICON = { GK: '🧤', CB: '🛡️', RB: '🛡️', LB: '🛡️', CDM: '⚙️', CM: '⚙️', CAM: '🎯', RW: '⚡', LW: '⚡', CF: '🎯', ST: '🥅' };
 
@@ -100,58 +89,10 @@ function routeToScreen() {
   else showCareer();
 }
 
-// ---------------- Criação do jogador (chips) ----------------
-
-const createState = {
-  age: 15, position: 'ST', foot: 'Direito', style: 'Finalizador',
-  nationality: 'Brasil', country: 'Brasil', height: 178, shirt: 10,
-};
-
-function buildChips(field, options, onChange) {
-  const el = document.querySelector(`.chips[data-field="${field}"]`);
-  el.innerHTML = '';
-  for (const opt of options) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'chip' + (createState[field] === opt.value ? ' selected' : '');
-    b.innerHTML = opt.label;
-    b.onclick = () => {
-      createState[field] = opt.value;
-      el.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
-      b.classList.add('selected');
-      if (onChange) onChange(opt.value);
-    };
-    el.appendChild(b);
-  }
-}
-
-function buildStepper(field, min, max, fmt) {
-  const wrap = document.querySelector(`.stepper[data-stepper="${field}"]`);
-  const valEl = document.getElementById(`${field}-val`);
-  const paint = () => { valEl.textContent = fmt(createState[field]); };
-  wrap.querySelectorAll('button').forEach((btn) => {
-    btn.onclick = () => {
-      const d = parseInt(btn.dataset.d, 10);
-      createState[field] = Math.max(min, Math.min(max, createState[field] + d));
-      paint();
-    };
-  });
-  paint();
-}
+// ---------------- Criação do jogador (só nome e altura) ----------------
+// Idade fixa em 15 anos; posição, pé, estilo e camisa são sorteados na roleta.
 
 function initCreate() {
-  buildChips('age', [14, 15, 16, 17, 18].map((a) => ({ value: a, label: `${a} anos` })));
-  buildChips('position', POSITIONS.map((p) => ({ value: p, label: `<strong>${p}</strong> ${POSITION_NAMES[p]}` })));
-  buildChips('foot', ['Direito', 'Esquerdo', 'Ambidestro'].map((f) => ({ value: f, label: f })));
-  buildChips('style', Object.keys(PLAYER_STYLES).map((s) => ({ value: s, label: s })), (v) => {
-    $('#style-desc').textContent = STYLE_DESC[v] || '';
-  });
-  buildChips('nationality', Object.keys(NATIONS).map((n) => ({ value: n, label: `<span class="flag">${flag(n)}</span>${n}` })));
-  buildChips('country', ORIGIN_COUNTRIES.map((c) => ({ value: c, label: `<span class="flag">${flag(c)}</span>${c}` })));
-  buildStepper('height', 160, 205, (v) => `${v} cm`);
-  buildStepper('shirt', 1, 99, (v) => `${v}`);
-  $('#style-desc').textContent = STYLE_DESC[createState.style];
-
   $('#btn-back-start').onclick = () => showScreen('#screen-start');
 
   $('#create-form').onsubmit = (e) => {
@@ -159,12 +100,8 @@ function initCreate() {
     const first = $('#create-form input[name=firstName]').value.trim();
     const last = $('#create-form input[name=lastName]').value.trim();
     if (!first || !last) { toast('Preencha nome e sobrenome.'); return; }
-    G = newGame({
-      firstName: first, lastName: last,
-      age: createState.age, nationality: createState.nationality, country: createState.country,
-      foot: createState.foot, position: createState.position, height: createState.height,
-      shirt: createState.shirt, style: createState.style,
-    });
+    const height = parseInt($('#create-form input[name=height]').value, 10) || 175;
+    G = newGame({ firstName: first, lastName: last, height });
     showRollScreen();
   };
 }
@@ -228,8 +165,12 @@ function revealRoll(roll) {
   display.textContent = `⭐ ${roll.clubName} ⭐`;
   $('#roulette').classList.add('landed');
   $('#roll-result').hidden = false;
+  const pos = roll.position || G.player.position;
+  const foot = roll.foot || G.player.foot;
   $('#roll-club').textContent = roll.clubName;
-  $('#roll-text').textContent = `Você foi selecionado para a categoria de base do ${roll.clubName}!`;
+  $('#roll-text').textContent = `Você foi selecionado para a base do ${roll.clubName} como ${POSITION_NAMES[pos]} (pé ${foot.toLowerCase()})!`;
+  $('#roll-pos').textContent = pos;
+  $('#roll-style').textContent = (roll.style || G.player.style).split(' ')[0];
   $('#roll-cat').textContent = roll.category;
   $('#roll-academy').textContent = '★'.repeat(Math.round(roll.academyLevel / 2)) || '★';
   $('#roll-ovr').textContent = roll.profile.overall;
