@@ -75,7 +75,7 @@ export function rollAcademy(G, country) {
   p.style = custom.style || randomStyle(p.position);
   p.shirt = custom.shirt || typicalShirt(p.position);
 
-  const profile = rollInitialProfile(p, club.academy);
+  const profile = rollInitialProfile(p, club.academy, custom.potential || null);
   return {
     clubId: club.id,
     clubName: club.name,

@@ -44,6 +44,7 @@ export function createPlayer(cfg) {
     contract: { wage: 0.5, years: 3 },
     value: 0.1,
     trainingFocus: 'Específico da posição',
+    statPoints: 0, // pontos de status ganhos por partida, distribuídos pelo usuário
     seasonStats: emptySeasonStats(),
     seasonHistory: [],
     titles: [],
@@ -65,17 +66,23 @@ export function avgRating(stats) {
   return stats.ratingCount > 0 ? stats.ratingSum / stats.ratingCount : 0;
 }
 
-// Gera atributos e overall inicial de acordo com idade, academia e potencial
-export function rollInitialProfile(player, academyLevel) {
+// Gera atributos e overall inicial de acordo com idade, academia e potencial.
+// customPotential: potencial escolhido pelo usuário na criação (opcional).
+export function rollInitialProfile(player, academyLevel, customPotential = null) {
   const [lo, hi] = initialOvrRange(player.age);
   const target = clamp(Math.round(gauss((lo + hi) / 2 + (academyLevel - 5) * 1.2, 3)), lo, hi);
   const attrs = createAttributes(player.position, target, player.style, player.height);
   const ovr = calcOverall(attrs, player.position);
-  // Potencial: distribui entre ~70 e 96, com leve bônus de academias melhores
-  let pot = Math.round(gauss(77 + academyLevel * 1.3, 6));
-  pot = clamp(Math.max(pot, ovr + 8), 68, 96);
-  // pequena chance de "geração craque"
-  if (ri(1, 100) <= 6) pot = clamp(pot + ri(2, 5), 68, 97);
+  let pot;
+  if (customPotential) {
+    pot = clamp(Math.max(customPotential, ovr + 5), 68, 97);
+  } else {
+    // Potencial sorteado: entre ~70 e 96, com leve bônus de academias melhores
+    pot = Math.round(gauss(77 + academyLevel * 1.3, 6));
+    pot = clamp(Math.max(pot, ovr + 8), 68, 96);
+    // pequena chance de "geração craque"
+    if (ri(1, 100) <= 6) pot = clamp(pot + ri(2, 5), 68, 97);
+  }
   return { attrs, overall: ovr, potential: pot };
 }
 

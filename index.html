@@ -353,6 +353,23 @@ small { font-size: .8rem; }
 .attr-block h4 { color: var(--faint); text-transform: uppercase; letter-spacing: 1px; margin: 4px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .attr-block h4 .g-avg { font-size: .95rem; font-weight: 900; padding: 1px 8px; border-radius: 6px; background: var(--card2); }
 .attr-row { display: grid; grid-template-columns: 1fr 30px; align-items: center; gap: 10px; font-size: .87rem; padding: 5px 0; }
+.attr-row.has-up { grid-template-columns: 1fr 30px 38px; }
+.up-btn {
+  width: 34px; height: 34px; border-radius: 9px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #23c46f, #35e08a); color: #04180d;
+  font-size: 1.25rem; font-weight: 900; line-height: 1; font-family: inherit;
+  box-shadow: 0 4px 12px -4px #35e08a99;
+  transition: transform .1s ease, filter .15s ease;
+}
+.up-btn:hover { filter: brightness(1.12); }
+.up-btn:active { transform: scale(.88); }
+.points-banner {
+  background: linear-gradient(135deg, #35e08a22, #35e08a0d);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px; margin-bottom: 12px;
+  font-size: .92rem; color: var(--text);
+}
 .attr-row .attr-name { color: var(--muted); }
 .attr-row .attr-val { text-align: right; font-weight: 800; font-size: .95rem; }
 .attr-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: #0c1424; overflow: hidden; margin-top: -2px; }
@@ -516,8 +533,8 @@ select.inline option, select option { background: #14213a; color: var(--text); }
       <h2>🎮 Crie seu jogador</h2>
       <form id="create-form" class="create-wrap">
         <p class="muted" style="margin-bottom:20px">
-          Você começa aos <strong>15 anos</strong> na base de um clube do Brasil 🇧🇷.
-          Sua posição, pé e estilo de jogo são revelados no <strong>sorteio da academia</strong> — o resto é com você dentro de campo.
+          Você começa aos <strong>15 anos</strong> na base de um clube do Brasil 🇧🇷, como jogador brasileiro.
+          Pé, estilo de jogo e camisa são revelados no <strong>sorteio da academia</strong>.
         </p>
 
         <div class="field-row">
@@ -529,6 +546,19 @@ select.inline option, select option { background: #14213a; color: var(--text); }
             <label>Sobrenome</label>
             <input name="lastName" required maxlength="20" placeholder="Ex.: Silva" autocomplete="off">
           </div>
+        </div>
+
+        <div class="field">
+          <label>Posição</label>
+          <div class="chips compact" id="pos-chips"></div>
+        </div>
+
+        <div class="field">
+          <label>Potencial: <output id="pot-out">85</output></label>
+          <input type="range" name="potential" min="70" max="95" value="85" step="1"
+                 oninput="document.getElementById('pot-out').textContent = this.value">
+          <div class="range-ends"><span>70 · Promessa</span><span>95 · Lenda</span></div>
+          <p class="style-desc">Define o teto da sua evolução — quanto maior, mais longe você pode chegar.</p>
         </div>
 
         <div class="field">
@@ -1172,6 +1202,7 @@ function createPlayer(cfg) {
     contract: { wage: 0.5, years: 3 },
     value: 0.1,
     trainingFocus: 'Específico da posição',
+    statPoints: 0, // pontos de status ganhos por partida, distribuídos pelo usuário
     seasonStats: emptySeasonStats(),
     seasonHistory: [],
     titles: [],
@@ -1193,17 +1224,23 @@ function avgRating(stats) {
   return stats.ratingCount > 0 ? stats.ratingSum / stats.ratingCount : 0;
 }
 
-// Gera atributos e overall inicial de acordo com idade, academia e potencial
-function rollInitialProfile(player, academyLevel) {
+// Gera atributos e overall inicial de acordo com idade, academia e potencial.
+// customPotential: potencial escolhido pelo usuário na criação (opcional).
+function rollInitialProfile(player, academyLevel, customPotential = null) {
   const [lo, hi] = initialOvrRange(player.age);
   const target = clamp(Math.round(gauss((lo + hi) / 2 + (academyLevel - 5) * 1.2, 3)), lo, hi);
   const attrs = createAttributes(player.position, target, player.style, player.height);
   const ovr = calcOverall(attrs, player.position);
-  // Potencial: distribui entre ~70 e 96, com leve bônus de academias melhores
-  let pot = Math.round(gauss(77 + academyLevel * 1.3, 6));
-  pot = clamp(Math.max(pot, ovr + 8), 68, 96);
-  // pequena chance de "geração craque"
-  if (ri(1, 100) <= 6) pot = clamp(pot + ri(2, 5), 68, 97);
+  let pot;
+  if (customPotential) {
+    pot = clamp(Math.max(customPotential, ovr + 5), 68, 97);
+  } else {
+    // Potencial sorteado: entre ~70 e 96, com leve bônus de academias melhores
+    pot = Math.round(gauss(77 + academyLevel * 1.3, 6));
+    pot = clamp(Math.max(pot, ovr + 8), 68, 96);
+    // pequena chance de "geração craque"
+    if (ri(1, 100) <= 6) pot = clamp(pot + ri(2, 5), 68, 97);
+  }
   return { attrs, overall: ovr, potential: pot };
 }
 
@@ -1584,7 +1621,7 @@ function rollAcademy(G, country) {
   p.style = custom.style || randomStyle(p.position);
   p.shirt = custom.shirt || typicalShirt(p.position);
 
-  const profile = rollInitialProfile(p, club.academy);
+  const profile = rollInitialProfile(p, club.academy, custom.potential || null);
   return {
     clubId: club.id,
     clubName: club.name,
@@ -2061,6 +2098,7 @@ function simNationalTournament(playerNation, isWorldCup) {
 
 
 
+
 const SEASON_WEEKS = 40;
 const YOUTH_ROUNDS = 30;
 
@@ -2082,6 +2120,7 @@ function newGame(cfg) {
       foot: cfg.foot || null,
       style: cfg.style || null,
       shirt: cfg.shirt || null,
+      potential: cfg.potential || null,
     },
     rerollsLeft: MAX_REROLLS,
     lastRoll: null,
@@ -2173,9 +2212,22 @@ function trainQuality(G) {
   return G.player.youth ? club.academy : club.academy * 0.5 + club.rep * 0.5;
 }
 
+// Pontos de status ganhos pela atuação (o usuário distribui nos atributos)
+function statPointsForRating(stats) {
+  let pts = 0;
+  if (stats.rating >= 8.5) pts = 3;
+  else if (stats.rating >= 7.5) pts = 2;
+  else if (stats.rating >= 6.5) pts = 1;
+  if (stats.motm) pts += 1;
+  return pts;
+}
+
 function applyStats(G, stats, comp) {
   const p = G.player;
   const s = p.seasonStats;
+  const gained = statPointsForRating(stats);
+  p.statPoints = (p.statPoints || 0) + gained;
+  stats.statPoints = gained;
   s.apps++;
   if (stats.minutes >= 60) s.starts++;
   s.minutes += stats.minutes;
@@ -2805,6 +2857,35 @@ function setTrainingFocus(G, focus) {
   G.player.trainingFocus = focus;
 }
 
+// Atributos em que o jogador pode gastar pontos de status
+function spendableAttrs(position) {
+  if (position === 'GK') {
+    return [...ATTR_GROUPS.goalkeeping, ...ATTR_GROUPS.physical, ...ATTR_GROUPS.passing];
+  }
+  return Object.keys(ATTR_NAMES).filter((k) => !ATTR_GROUPS.goalkeeping.includes(k));
+}
+
+/**
+ * Gasta 1 ponto de status para aumentar um atributo em +1.
+ * O overall resultante nunca pode ultrapassar o potencial.
+ */
+function spendStatPoint(G, attr) {
+  const p = G.player;
+  if ((p.statPoints || 0) <= 0) return { ok: false, reason: 'Sem pontos disponíveis' };
+  if (!spendableAttrs(p.position).includes(attr)) return { ok: false, reason: 'Atributo inválido para sua posição' };
+  if (p.attrs[attr] >= 99) return { ok: false, reason: 'Atributo já está no máximo' };
+  p.attrs[attr]++;
+  const newOvr = calcOverall(p.attrs, p.position);
+  if (newOvr > p.potential) {
+    p.attrs[attr]--;
+    return { ok: false, reason: 'Você atingiu o teto do seu potencial' };
+  }
+  p.overall = newOvr;
+  p.statPoints--;
+  p.value = marketValue(p);
+  return { ok: true };
+}
+
 // Totais de carreira (histórico + temporada atual)
 function careerTotals(G) {
   const p = G.player;
@@ -2983,10 +3064,28 @@ function routeToScreen() {
   else showCareer();
 }
 
-// ---------------- Criação do jogador (só nome e altura) ----------------
-// Idade fixa em 15 anos; posição, pé, estilo e camisa são sorteados na roleta.
+// ---------------- Criação do jogador ----------------
+// Escolhe nome, posição, potencial e altura. Idade fixa em 15 anos, sempre
+// brasileiro; pé, estilo e camisa são sorteados na roleta.
+
+let chosenPosition = 'ST';
 
 function initCreate() {
+  const posChips = $('#pos-chips');
+  posChips.innerHTML = '';
+  for (const p of Object.keys(POSITION_NAMES)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (p === chosenPosition ? ' selected' : '');
+    b.innerHTML = `<strong>${p}</strong> ${POSITION_NAMES[p]}`;
+    b.onclick = () => {
+      chosenPosition = p;
+      posChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+      b.classList.add('selected');
+    };
+    posChips.appendChild(b);
+  }
+
   $('#btn-back-start').onclick = () => showScreen('#screen-start');
 
   $('#create-form').onsubmit = (e) => {
@@ -2995,7 +3094,8 @@ function initCreate() {
     const last = $('#create-form input[name=lastName]').value.trim();
     if (!first || !last) { toast('Preencha nome e sobrenome.'); return; }
     const height = parseInt($('#create-form input[name=height]').value, 10) || 175;
-    G = newGame({ firstName: first, lastName: last, height });
+    const potential = parseInt($('#create-form input[name=potential]').value, 10) || 85;
+    G = newGame({ firstName: first, lastName: last, height, position: chosenPosition, potential });
     showRollScreen();
   };
 }
@@ -3145,6 +3245,7 @@ function renderHeader() {
         <span class="badge">💰 ${fmtMoney(p.value)}</span>
         ${p.injury ? `<span class="badge red">🤕 ${p.injury.weeks} sem</span>` : ''}
         ${rating > 0 ? `<span class="badge gold">⭐ ${rating.toFixed(2)}</span>` : ''}
+        ${(p.statPoints || 0) > 0 ? `<span class="badge green">⬆ ${p.statPoints} pts</span>` : ''}
       </div>
     </div>
     <div class="season-box">
@@ -3222,9 +3323,26 @@ function renderOverview(el) {
     </div>
     <div class="card">
       <h3>Atributos <span class="section-tag">OVR ${p.overall} · POT ~${p.potential}</span></h3>
+      ${(p.statPoints || 0) > 0
+        ? `<div class="points-banner">⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Toque em <strong>+</strong> para evoluir um atributo.</div>`
+        : '<p class="faint" style="font-size:.78rem;margin-bottom:10px">Jogue bem para ganhar pontos de status e evoluir seus atributos.</p>'}
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  // botões de gasto de pontos de status
+  el.querySelectorAll('button[data-up]').forEach((b) => {
+    b.onclick = () => {
+      const r = spendStatPoint(G, b.dataset.up);
+      if (r.ok) {
+        saveToStorage(G);
+        renderHeader();
+        renderTab();
+      } else {
+        toast(`⚠️ ${r.reason}`);
+      }
+    };
+  });
 
   const rbtn = $('#btn-retire');
   if (rbtn) {
@@ -3252,6 +3370,8 @@ function attrColumns(p) {
   const isGk = p.position === 'GK';
   const groups = isGk ? ['goalkeeping', 'physical', 'passing'] : ['attack', 'passing', 'dribbling', 'defense', 'physical'];
   const titles = { attack: '⚔️ Ataque', passing: '🎯 Passe', dribbling: '✨ Drible', defense: '🛡️ Defesa', physical: '💪 Físico', goalkeeping: '🧤 Goleiro' };
+  const canSpend = (p.statPoints || 0) > 0;
+  const allowed = canSpend ? spendableAttrs(p.position) : [];
   return groups.map((g) => {
     const keys = ATTR_GROUPS[g];
     const avg = Math.round(keys.reduce((a, k) => a + p.attrs[k], 0) / keys.length);
@@ -3261,9 +3381,12 @@ function attrColumns(p) {
       ${keys.map((k) => {
         const v = p.attrs[k];
         const t = attrTier(v);
-        return `<div class="attr-row">
+        const upBtn = canSpend && allowed.includes(k) && v < 99
+          ? `<button type="button" class="up-btn" data-up="${k}" title="Gastar 1 ponto">+</button>` : '';
+        return `<div class="attr-row ${upBtn ? 'has-up' : ''}">
           <span class="attr-name">${ATTR_NAMES[k]}</span>
           <span class="attr-val v-${t}">${v}</span>
+          ${upBtn}
           <span class="bar"><i class="bar-${t}" style="width:${v}%"></i></span>
         </div>`;
       }).join('')}
@@ -3657,7 +3780,8 @@ function showNextEvent() {
                <div class="stat-chip">Passes<strong>${m.stats.passes} · ${m.stats.passAcc}%</strong></div>
                <div class="stat-chip">Desarmes<strong>${m.stats.tackles}</strong></div>`}
           ${m.stats.yellow ? '<div class="stat-chip">Cartão<strong>🟨</strong></div>' : ''}${m.stats.red ? '<div class="stat-chip">Cartão<strong>🟥</strong></div>' : ''}
-        </div>` : '<div class="event-line" style="margin-top:12px">Você não entrou em campo nesta partida.</div>'}`;
+        </div>
+        ${m.stats.statPoints > 0 ? `<div class="points-banner" style="margin-top:12px">⬆ Você ganhou <strong>+${m.stats.statPoints}</strong> ponto${m.stats.statPoints > 1 ? 's' : ''} de status! Distribua na aba Jogador.</div>` : ''}` : '<div class="event-line" style="margin-top:12px">Você não entrou em campo nesta partida.</div>'}`;
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
     const gold = e.type === 'title' || e.type === 'award';

@@ -13,6 +13,7 @@ import {
   NAT_WINDOW_WEEKS, WORLD_CLUB_CUP_WEEK,
 } from './competitions.js';
 import { NATIONS } from '../data/nations.js';
+import { ATTR_GROUPS, ATTR_NAMES, calcOverall } from './attributes.js';
 import { seed, getSeed, ri, gauss, clamp, chance, choice } from './rng.js';
 
 export const SEASON_WEEKS = 40;
@@ -37,6 +38,7 @@ export function newGame(cfg) {
       foot: cfg.foot || null,
       style: cfg.style || null,
       shirt: cfg.shirt || null,
+      potential: cfg.potential || null,
     },
     rerollsLeft: MAX_REROLLS,
     lastRoll: null,
@@ -128,9 +130,22 @@ function trainQuality(G) {
   return G.player.youth ? club.academy : club.academy * 0.5 + club.rep * 0.5;
 }
 
+// Pontos de status ganhos pela atuação (o usuário distribui nos atributos)
+function statPointsForRating(stats) {
+  let pts = 0;
+  if (stats.rating >= 8.5) pts = 3;
+  else if (stats.rating >= 7.5) pts = 2;
+  else if (stats.rating >= 6.5) pts = 1;
+  if (stats.motm) pts += 1;
+  return pts;
+}
+
 function applyStats(G, stats, comp) {
   const p = G.player;
   const s = p.seasonStats;
+  const gained = statPointsForRating(stats);
+  p.statPoints = (p.statPoints || 0) + gained;
+  stats.statPoints = gained;
   s.apps++;
   if (stats.minutes >= 60) s.starts++;
   s.minutes += stats.minutes;
@@ -758,6 +773,35 @@ export function negotiate(G, offerId) {
 
 export function setTrainingFocus(G, focus) {
   G.player.trainingFocus = focus;
+}
+
+// Atributos em que o jogador pode gastar pontos de status
+export function spendableAttrs(position) {
+  if (position === 'GK') {
+    return [...ATTR_GROUPS.goalkeeping, ...ATTR_GROUPS.physical, ...ATTR_GROUPS.passing];
+  }
+  return Object.keys(ATTR_NAMES).filter((k) => !ATTR_GROUPS.goalkeeping.includes(k));
+}
+
+/**
+ * Gasta 1 ponto de status para aumentar um atributo em +1.
+ * O overall resultante nunca pode ultrapassar o potencial.
+ */
+export function spendStatPoint(G, attr) {
+  const p = G.player;
+  if ((p.statPoints || 0) <= 0) return { ok: false, reason: 'Sem pontos disponíveis' };
+  if (!spendableAttrs(p.position).includes(attr)) return { ok: false, reason: 'Atributo inválido para sua posição' };
+  if (p.attrs[attr] >= 99) return { ok: false, reason: 'Atributo já está no máximo' };
+  p.attrs[attr]++;
+  const newOvr = calcOverall(p.attrs, p.position);
+  if (newOvr > p.potential) {
+    p.attrs[attr]--;
+    return { ok: false, reason: 'Você atingiu o teto do seu potencial' };
+  }
+  p.overall = newOvr;
+  p.statPoints--;
+  p.value = marketValue(p);
+  return { ok: true };
 }
 
 // Totais de carreira (histórico + temporada atual)

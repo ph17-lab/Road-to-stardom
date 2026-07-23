@@ -4,6 +4,7 @@ import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer, rejectOffer,
   negotiate, setTrainingFocus, retirePlayer, careerTotals, nextFixture,
   playerClub, playerLeague, avgRating, fullName, tableStandings,
+  spendStatPoint, spendableAttrs,
 } from '../core/engine.js';
 import { saveToStorage, loadFromStorage, clearStorage, serialize, deserialize } from '../core/save.js';
 import { POSITION_NAMES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
@@ -89,10 +90,28 @@ function routeToScreen() {
   else showCareer();
 }
 
-// ---------------- Criação do jogador (só nome e altura) ----------------
-// Idade fixa em 15 anos; posição, pé, estilo e camisa são sorteados na roleta.
+// ---------------- Criação do jogador ----------------
+// Escolhe nome, posição, potencial e altura. Idade fixa em 15 anos, sempre
+// brasileiro; pé, estilo e camisa são sorteados na roleta.
+
+let chosenPosition = 'ST';
 
 function initCreate() {
+  const posChips = $('#pos-chips');
+  posChips.innerHTML = '';
+  for (const p of Object.keys(POSITION_NAMES)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (p === chosenPosition ? ' selected' : '');
+    b.innerHTML = `<strong>${p}</strong> ${POSITION_NAMES[p]}`;
+    b.onclick = () => {
+      chosenPosition = p;
+      posChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+      b.classList.add('selected');
+    };
+    posChips.appendChild(b);
+  }
+
   $('#btn-back-start').onclick = () => showScreen('#screen-start');
 
   $('#create-form').onsubmit = (e) => {
@@ -101,7 +120,8 @@ function initCreate() {
     const last = $('#create-form input[name=lastName]').value.trim();
     if (!first || !last) { toast('Preencha nome e sobrenome.'); return; }
     const height = parseInt($('#create-form input[name=height]').value, 10) || 175;
-    G = newGame({ firstName: first, lastName: last, height });
+    const potential = parseInt($('#create-form input[name=potential]').value, 10) || 85;
+    G = newGame({ firstName: first, lastName: last, height, position: chosenPosition, potential });
     showRollScreen();
   };
 }
@@ -251,6 +271,7 @@ function renderHeader() {
         <span class="badge">💰 ${fmtMoney(p.value)}</span>
         ${p.injury ? `<span class="badge red">🤕 ${p.injury.weeks} sem</span>` : ''}
         ${rating > 0 ? `<span class="badge gold">⭐ ${rating.toFixed(2)}</span>` : ''}
+        ${(p.statPoints || 0) > 0 ? `<span class="badge green">⬆ ${p.statPoints} pts</span>` : ''}
       </div>
     </div>
     <div class="season-box">
@@ -328,9 +349,26 @@ function renderOverview(el) {
     </div>
     <div class="card">
       <h3>Atributos <span class="section-tag">OVR ${p.overall} · POT ~${p.potential}</span></h3>
+      ${(p.statPoints || 0) > 0
+        ? `<div class="points-banner">⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Toque em <strong>+</strong> para evoluir um atributo.</div>`
+        : '<p class="faint" style="font-size:.78rem;margin-bottom:10px">Jogue bem para ganhar pontos de status e evoluir seus atributos.</p>'}
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  // botões de gasto de pontos de status
+  el.querySelectorAll('button[data-up]').forEach((b) => {
+    b.onclick = () => {
+      const r = spendStatPoint(G, b.dataset.up);
+      if (r.ok) {
+        saveToStorage(G);
+        renderHeader();
+        renderTab();
+      } else {
+        toast(`⚠️ ${r.reason}`);
+      }
+    };
+  });
 
   const rbtn = $('#btn-retire');
   if (rbtn) {
@@ -358,6 +396,8 @@ function attrColumns(p) {
   const isGk = p.position === 'GK';
   const groups = isGk ? ['goalkeeping', 'physical', 'passing'] : ['attack', 'passing', 'dribbling', 'defense', 'physical'];
   const titles = { attack: '⚔️ Ataque', passing: '🎯 Passe', dribbling: '✨ Drible', defense: '🛡️ Defesa', physical: '💪 Físico', goalkeeping: '🧤 Goleiro' };
+  const canSpend = (p.statPoints || 0) > 0;
+  const allowed = canSpend ? spendableAttrs(p.position) : [];
   return groups.map((g) => {
     const keys = ATTR_GROUPS[g];
     const avg = Math.round(keys.reduce((a, k) => a + p.attrs[k], 0) / keys.length);
@@ -367,9 +407,12 @@ function attrColumns(p) {
       ${keys.map((k) => {
         const v = p.attrs[k];
         const t = attrTier(v);
-        return `<div class="attr-row">
+        const upBtn = canSpend && allowed.includes(k) && v < 99
+          ? `<button type="button" class="up-btn" data-up="${k}" title="Gastar 1 ponto">+</button>` : '';
+        return `<div class="attr-row ${upBtn ? 'has-up' : ''}">
           <span class="attr-name">${ATTR_NAMES[k]}</span>
           <span class="attr-val v-${t}">${v}</span>
+          ${upBtn}
           <span class="bar"><i class="bar-${t}" style="width:${v}%"></i></span>
         </div>`;
       }).join('')}
@@ -763,7 +806,8 @@ function showNextEvent() {
                <div class="stat-chip">Passes<strong>${m.stats.passes} · ${m.stats.passAcc}%</strong></div>
                <div class="stat-chip">Desarmes<strong>${m.stats.tackles}</strong></div>`}
           ${m.stats.yellow ? '<div class="stat-chip">Cartão<strong>🟨</strong></div>' : ''}${m.stats.red ? '<div class="stat-chip">Cartão<strong>🟥</strong></div>' : ''}
-        </div>` : '<div class="event-line" style="margin-top:12px">Você não entrou em campo nesta partida.</div>'}`;
+        </div>
+        ${m.stats.statPoints > 0 ? `<div class="points-banner" style="margin-top:12px">⬆ Você ganhou <strong>+${m.stats.statPoints}</strong> ponto${m.stats.statPoints > 1 ? 's' : ''} de status! Distribua na aba Jogador.</div>` : ''}` : '<div class="event-line" style="margin-top:12px">Você não entrou em campo nesta partida.</div>'}`;
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
     const gold = e.type === 'title' || e.type === 'award';

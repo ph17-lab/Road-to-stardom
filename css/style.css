@@ -344,6 +344,23 @@ small { font-size: .8rem; }
 .attr-block h4 { color: var(--faint); text-transform: uppercase; letter-spacing: 1px; margin: 4px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .attr-block h4 .g-avg { font-size: .95rem; font-weight: 900; padding: 1px 8px; border-radius: 6px; background: var(--card2); }
 .attr-row { display: grid; grid-template-columns: 1fr 30px; align-items: center; gap: 10px; font-size: .87rem; padding: 5px 0; }
+.attr-row.has-up { grid-template-columns: 1fr 30px 38px; }
+.up-btn {
+  width: 34px; height: 34px; border-radius: 9px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #23c46f, #35e08a); color: #04180d;
+  font-size: 1.25rem; font-weight: 900; line-height: 1; font-family: inherit;
+  box-shadow: 0 4px 12px -4px #35e08a99;
+  transition: transform .1s ease, filter .15s ease;
+}
+.up-btn:hover { filter: brightness(1.12); }
+.up-btn:active { transform: scale(.88); }
+.points-banner {
+  background: linear-gradient(135deg, #35e08a22, #35e08a0d);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px; margin-bottom: 12px;
+  font-size: .92rem; color: var(--text);
+}
 .attr-row .attr-name { color: var(--muted); }
 .attr-row .attr-val { text-align: right; font-weight: 800; font-size: .95rem; }
 .attr-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: #0c1424; overflow: hidden; margin-top: -2px; }

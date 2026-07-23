@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 
 import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer,
-  setTrainingFocus, careerTotals, nextFixture, retirePlayer, SEASON_WEEKS, MAX_REROLLS,
+  setTrainingFocus, careerTotals, nextFixture, retirePlayer, spendStatPoint,
+  SEASON_WEEKS, MAX_REROLLS,
 } from '../src/core/engine.js';
 import { serialize, deserialize } from '../src/core/save.js';
 import { calcOverall, createAttributes, POSITIONS, trainingOptions } from '../src/core/attributes.js';
@@ -77,6 +78,52 @@ test('criação simplificada: só nome e altura; 15 anos fixo e perfil sorteado 
   // a carreira roda normalmente com o perfil sorteado
   for (let w = 0; w < 10; w++) advanceWeek(G);
   assert.ok(G.player.seasonStats.apps > 0);
+});
+
+test('posição e potencial escolhidos na criação são respeitados', () => {
+  const G = newGame({ firstName: 'Ana', lastName: 'Souza', height: 172, position: 'CAM', potential: 92, seed: 51 });
+  assert.equal(G.player.nationality, 'Brasil', 'jogador é sempre brasileiro');
+  for (let i = 0; i <= MAX_REROLLS; i++) {
+    const r = doRollAcademy(G);
+    assert.equal(r.position, 'CAM', 'posição escolhida se mantém em toda re-rolagem');
+    assert.equal(r.profile.potential, 92, 'potencial escolhido se mantém');
+  }
+  confirmAcademy(G);
+  assert.equal(G.player.position, 'CAM');
+  assert.equal(G.player.potential, 92);
+});
+
+test('pontos de status: ganha por partida e distribui manualmente', () => {
+  const G = newGame({ firstName: 'Ze', lastName: 'Gol', height: 180, position: 'ST', potential: 90, seed: 19 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  let guard = 0;
+  while ((G.player.statPoints || 0) === 0 && guard < 30) {
+    guard++;
+    advanceWeek(G);
+  }
+  assert.ok(G.player.statPoints > 0, 'boas atuações devem render pontos de status');
+
+  const before = G.player.attrs.finishing;
+  const pointsBefore = G.player.statPoints;
+  const r = spendStatPoint(G, 'finishing');
+  assert.equal(r.ok, true);
+  assert.equal(G.player.attrs.finishing, before + 1);
+  assert.equal(G.player.statPoints, pointsBefore - 1);
+
+  // jogador de linha não pode gastar em atributo de goleiro
+  assert.equal(spendStatPoint(G, 'reflexes').ok, false);
+
+  // o gasto respeita o teto do potencial
+  G.player.potential = G.player.overall;
+  G.player.statPoints = 60;
+  let blocked = false;
+  for (let i = 0; i < 60; i++) {
+    const res = spendStatPoint(G, 'finishing');
+    if (!res.ok) { blocked = true; break; }
+  }
+  assert.ok(blocked, 'a distribuição deve parar no teto do potencial');
+  assert.ok(G.player.overall <= G.player.potential);
 });
 
 test('perfil fixado na criação é respeitado pela roleta', () => {
