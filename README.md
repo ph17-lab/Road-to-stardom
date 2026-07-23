@@ -31,6 +31,7 @@ Você escolhe apenas **nome e altura** — a carreira sempre começa aos **15 an
 - **Ligas e tabelas**: ~230 clubes em 15 ligas (Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Brasileirão, e mais) todas simuladas rodada a rodada.
 - **Copas nacionais, Champions League, Libertadores, continentais e Mundial de Clubes** — a classificação continental vem da posição na tabela da temporada anterior (ex.: G3 da Premier League → Champions; G8 do Brasileirão → Libertadores), com a zona de classificação destacada na tabela.
 - **Seleção nacional**: convocações por overall/reputação, amistosos em datas FIFA, Copa do Mundo e torneios continentais.
+- **Limit Break**: ao atingir o potencial máximo, o jogador pode romper os limites — o teto de todos os atributos e do overall sobe para **200**, cada partida rende 4× mais pontos de status, e o Overall 200 só é alcançado com todos os atributos em 200.
 - **Prêmios**: artilheiro, melhor jovem, melhor da liga, time da temporada e **Bola de Ouro**.
 - **Títulos e histórico** completos, temporada a temporada.
 - **Notícias dinâmicas** do mundo do jogo.

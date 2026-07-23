@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer,
   setTrainingFocus, careerTotals, nextFixture, retirePlayer, spendStatPoint,
+  spendableAttrs, canLimitBreak, doLimitBreak,
   SEASON_WEEKS, MAX_REROLLS,
 } from '../src/core/engine.js';
 import { serialize, deserialize } from '../src/core/save.js';
@@ -279,6 +280,63 @@ test('jogador com potencial alto atinge nível de elite e recebe prêmios/convoc
   assert.ok(called, 'jogador de elite deve ser convocado para a seleção');
   assert.ok(anyAward, 'jogador de elite deve ganhar prêmios individuais');
   assert.ok(titles > 0, 'deve conquistar títulos ao longo das carreiras');
+});
+
+test('limit break: teto sobe para 200 e overall 200 exige tudo em 200', () => {
+  const G = newGame({ firstName: 'Goku', lastName: 'Silva', height: 180, position: 'ST', potential: 90, seed: 23 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+
+  // antes de atingir o potencial, o limit break é negado
+  assert.equal(doLimitBreak(G).ok, false);
+  assert.equal(canLimitBreak(G), false);
+
+  // simula chegar ao potencial máximo
+  G.player.potential = G.player.overall;
+  assert.equal(canLimitBreak(G), true);
+  const r = doLimitBreak(G);
+  assert.equal(r.ok, true);
+  assert.equal(G.player.limitBroken, true);
+  assert.equal(G.player.potential, 200, 'após o limit break o teto é 200');
+
+  // não há segundo limit break
+  assert.equal(doLimitBreak(G).ok, false);
+
+  // agora dá para upar um atributo além de 99, até 200
+  G.player.statPoints = 5000;
+  let guard = 0;
+  while (spendStatPoint(G, 'finishing').ok && guard++ < 300) { /* upa até travar */ }
+  assert.equal(G.player.attrs.finishing, 200, 'atributo pode chegar a 200');
+
+  // overall 200 só com TODOS os atributos relevantes em 200
+  assert.ok(G.player.overall < 200, 'um atributo só não basta para overall 200');
+  for (const k of spendableAttrs('ST')) G.player.attrs[k] = 200;
+  G.player.overall = calcOverall(G.player.attrs, 'ST');
+  assert.equal(G.player.overall, 200, 'com tudo em 200 o overall é 200');
+
+  // o jogo continua rodando normalmente após o limit break
+  for (let w = 0; w < 10; w++) advanceWeek(G);
+  assert.ok(G.player.seasonStats.apps >= 0);
+});
+
+test('pontos de status rendem 4x mais após o limit break', () => {
+  const G = newGame({ firstName: 'Vegeta', lastName: 'Souza', height: 178, position: 'ST', potential: 90, seed: 41 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  // carreira normal: acumula pontos por algumas semanas
+  let normalPts = 0;
+  for (let w = 0; w < 8; w++) {
+    advanceWeek(G);
+  }
+  normalPts = G.player.statPoints;
+  // ativa o limit break e joga o mesmo número de semanas
+  G.player.potential = G.player.overall;
+  doLimitBreak(G);
+  const before = G.player.statPoints;
+  for (let w = 0; w < 8; w++) advanceWeek(G);
+  const brokenPts = G.player.statPoints - before;
+  // com o multiplicador 4x, o ganho pós-break deve superar o ganho normal
+  assert.ok(brokenPts > normalPts, `ganho pós-break (${brokenPts}) deve superar o normal (${normalPts})`);
 });
 
 test('classificação continental vem da posição na tabela da temporada anterior', () => {

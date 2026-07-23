@@ -39,11 +39,12 @@ export function monthlyDevelopment(player, { trainQuality, leagueStrength, minut
     points = Math.max(0, points);
 
     // aplica pontos inteiros + fração como probabilidade
+    const cap = player.limitBroken ? 200 : 99;
     let whole = Math.floor(points);
     if (rand() < points - whole) whole++;
     for (let i = 0; i < whole; i++) {
       const attr = pickGrowthAttr(player.position, resolveFocus(player));
-      if (player.attrs[attr] < 99) {
+      if (player.attrs[attr] < cap) {
         player.attrs[attr]++;
         gained++;
       }

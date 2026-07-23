@@ -45,6 +45,7 @@ export function createPlayer(cfg) {
     value: 0.1,
     trainingFocus: 'Específico da posição',
     statPoints: 0, // pontos de status ganhos por partida, distribuídos pelo usuário
+    limitBroken: false, // limit break: teto de atributos/overall sobe para 200
     seasonStats: emptySeasonStats(),
     seasonHistory: [],
     titles: [],

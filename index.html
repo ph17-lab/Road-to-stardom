@@ -283,6 +283,14 @@ small { font-size: .8rem; }
 .ovr-ring.tier-gold   { --ring-color: var(--gold); }   .ovr-ring.tier-gold   .ovr-num { color: var(--gold); }
 .ovr-ring.tier-silver { --ring-color: var(--silver); } .ovr-ring.tier-silver .ovr-num { color: var(--silver); }
 .ovr-ring.tier-bronze { --ring-color: var(--bronze); } .ovr-ring.tier-bronze .ovr-num { color: var(--bronze); }
+/* pós-limit-break: fogo */
+.ovr-ring.tier-limit { --ring-color: #ff5f6d; animation: limit-glow 1.8s ease-in-out infinite; }
+.ovr-ring.tier-limit .ovr-num { color: #ff8a5c; font-size: 1.35rem; text-shadow: 0 0 14px #ff5f6d88; }
+.ovr-ring.tier-limit.sm .ovr-num { font-size: 1rem; }
+@keyframes limit-glow {
+  0%, 100% { box-shadow: 0 0 18px -4px #ff5f6d66; }
+  50% { box-shadow: 0 0 30px -2px #ff5f6dbb; }
+}
 
 /* ---------- Header da carreira ---------- */
 .career-header {
@@ -322,6 +330,15 @@ small { font-size: .8rem; }
 .badge.red { color: #fff; background: var(--red); border: none; }
 .badge.blue { color: #04121f; background: var(--accent2); border: none; }
 .badge.purple { color: #fff; background: var(--purple); border: none; }
+.badge.limit { color: #fff; background: linear-gradient(135deg, #ff5f6d, #d63a6a); border: none; box-shadow: 0 0 14px -2px #ff5f6d99; }
+
+/* Card do Limit Break */
+.limit-card {
+  border: 2px solid #ff5f6d;
+  background: radial-gradient(400px 120px at 50% 0%, #ff5f6d22, transparent), linear-gradient(180deg, var(--card), #111c33);
+  animation: limit-glow 2s ease-in-out infinite;
+}
+.limit-card h3 { color: #ff8a5c; }
 
 /* ---------- Tabs ---------- */
 .tabs {
@@ -378,6 +395,8 @@ small { font-size: .8rem; }
 .v-good  { color: var(--accent); } .bar-good  { background: linear-gradient(90deg, var(--accent-d), var(--accent)); }
 .v-ok    { color: var(--gold); }   .bar-ok    { background: linear-gradient(90deg, #c99a1e, var(--gold)); }
 .v-low   { color: #e0864f; }       .bar-low   { background: linear-gradient(90deg, #a85a2e, #e0864f); }
+.v-limit { color: #ff8a5c; text-shadow: 0 0 10px #ff5f6d66; }
+.bar-limit { background: linear-gradient(90deg, #ff5f6d, #ffc371); }
 
 /* ---------- Tabelas (estilizadas, não "wiki") ---------- */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
@@ -1071,13 +1090,18 @@ function groupAvg(attrs, group) {
   return keys.reduce((sum, k) => sum + attrs[k], 0) / keys.length;
 }
 
+// Teto absoluto pós-limit-break: atributos e overall podem chegar a 200
+const LIMIT_BREAK_CAP = 200;
+
 function calcOverall(attrs, position) {
   const weights = POS_WEIGHTS[position];
   let ovr = 0;
   for (const [group, w] of Object.entries(weights)) {
     ovr += groupAvg(attrs, group) * w;
   }
-  return clamp(Math.round(ovr), 1, 99);
+  // como o overall é uma média ponderada, só chega a 200 com TODOS os
+  // atributos relevantes em 200 (atributos normais nunca passam de 99)
+  return clamp(Math.round(ovr), 1, LIMIT_BREAK_CAP);
 }
 
 // Grupos mais relevantes da posição (para treino/evolução direcionada)
@@ -1203,6 +1227,7 @@ function createPlayer(cfg) {
     value: 0.1,
     trainingFocus: 'Específico da posição',
     statPoints: 0, // pontos de status ganhos por partida, distribuídos pelo usuário
+    limitBroken: false, // limit break: teto de atributos/overall sobe para 200
     seasonStats: emptySeasonStats(),
     seasonHistory: [],
     titles: [],
@@ -1689,11 +1714,12 @@ function monthlyDevelopment(player, { trainQuality, leagueStrength, minutesShare
     points = Math.max(0, points);
 
     // aplica pontos inteiros + fração como probabilidade
+    const cap = player.limitBroken ? 200 : 99;
     let whole = Math.floor(points);
     if (rand() < points - whole) whole++;
     for (let i = 0; i < whole; i++) {
       const attr = pickGrowthAttr(player.position, resolveFocus(player));
-      if (player.attrs[attr] < 99) {
+      if (player.attrs[attr] < cap) {
         player.attrs[attr]++;
         gained++;
       }
@@ -2246,7 +2272,8 @@ function trainQuality(G) {
   return G.player.youth ? club.academy : club.academy * 0.5 + club.rep * 0.5;
 }
 
-// Pontos de status ganhos pela atuação (o usuário distribui nos atributos)
+// Pontos de status ganhos pela atuação (o usuário distribui nos atributos).
+// Após o limit break, cada partida rende 4x mais pontos.
 function statPointsForRating(stats) {
   let pts = 0;
   if (stats.rating >= 8.5) pts = 3;
@@ -2259,7 +2286,7 @@ function statPointsForRating(stats) {
 function applyStats(G, stats, comp) {
   const p = G.player;
   const s = p.seasonStats;
-  const gained = statPointsForRating(stats);
+  const gained = statPointsForRating(stats) * (p.limitBroken ? 4 : 1);
   p.statPoints = (p.statPoints || 0) + gained;
   stats.statPoints = gained;
   s.apps++;
@@ -2915,21 +2942,45 @@ function spendableAttrs(position) {
 /**
  * Gasta 1 ponto de status para aumentar um atributo em +1.
  * O overall resultante nunca pode ultrapassar o potencial.
+ * Após o limit break, o teto de cada atributo sobe de 99 para 200.
  */
 function spendStatPoint(G, attr) {
   const p = G.player;
+  const cap = p.limitBroken ? LIMIT_BREAK_CAP : 99;
   if ((p.statPoints || 0) <= 0) return { ok: false, reason: 'Sem pontos disponíveis' };
   if (!spendableAttrs(p.position).includes(attr)) return { ok: false, reason: 'Atributo inválido para sua posição' };
-  if (p.attrs[attr] >= 99) return { ok: false, reason: 'Atributo já está no máximo' };
+  if (p.attrs[attr] >= cap) return { ok: false, reason: 'Atributo já está no máximo' };
   p.attrs[attr]++;
   const newOvr = calcOverall(p.attrs, p.position);
   if (newOvr > p.potential) {
     p.attrs[attr]--;
-    return { ok: false, reason: 'Você atingiu o teto do seu potencial' };
+    return { ok: false, reason: p.limitBroken ? 'Teto absoluto atingido' : 'Você atingiu o teto do seu potencial — hora do LIMIT BREAK?' };
   }
   p.overall = newOvr;
   p.statPoints--;
   p.value = marketValue(p);
+  return { ok: true };
+}
+
+function canLimitBreak(G) {
+  const p = G.player;
+  return !p.limitBroken && p.overall >= p.potential;
+}
+
+/**
+ * LIMIT BREAK: disponível ao atingir o potencial máximo. O teto de todos os
+ * atributos e do overall sobe para 200, e os pontos de status rendem 4x.
+ * Overall 200 exige todos os atributos relevantes em 200.
+ */
+function doLimitBreak(G) {
+  const p = G.player;
+  if (p.limitBroken) return { ok: false, reason: 'Você já rompeu seus limites' };
+  if (p.overall < p.potential) return { ok: false, reason: 'Atinja seu potencial máximo primeiro' };
+  p.limitBroken = true;
+  p.potential = LIMIT_BREAK_CAP;
+  p.morale = clamp(p.morale + 15, 10, 99);
+  p.reputation = clamp(p.reputation + 10, 1, 100);
+  addNews(G, `LIMIT BREAK! ${fullName(p)} rompe todos os limites conhecidos. Analistas afirmam: não há mais teto para o craque.`);
   return { ok: true };
 }
 
@@ -3052,6 +3103,7 @@ const POS_GROUP_ICON = { GK: '🧤', CB: '🛡️', RB: '🛡️', LB: '🛡️'
 
 // tier do overall geral -> classe do anel
 function ovrTierClass(ovr) {
+  if (ovr >= 100) return 'tier-limit';
   if (ovr >= 85) return 'tier-elite';
   if (ovr >= 78) return 'tier-gold';
   if (ovr >= 68) return 'tier-silver';
@@ -3059,13 +3111,16 @@ function ovrTierClass(ovr) {
 }
 // tier de um atributo individual
 function attrTier(v) {
+  if (v >= 100) return 'limit';
   if (v >= 80) return 'elite';
   if (v >= 70) return 'good';
   if (v >= 60) return 'ok';
   return 'low';
 }
 function ovrRing(ovr, extraClass = '') {
-  return `<div class="ovr-ring ${ovrTierClass(ovr)} ${extraClass}" style="--p:${ovr}"><span class="ovr-num">${ovr}</span></div>`;
+  // pós-limit-break o anel representa a escala 0-200
+  const pct = ovr > 99 ? Math.min(100, ovr / 2) : ovr;
+  return `<div class="ovr-ring ${ovrTierClass(ovr)} ${extraClass}" style="--p:${pct}"><span class="ovr-num">${ovr}</span></div>`;
 }
 
 // ---------------- Navegação entre telas ----------------
@@ -3288,7 +3343,7 @@ function renderHeader() {
       <div>
         <span class="badge ${p.youth ? 'blue' : roleBadge}">${p.youth ? '🎓 ' + p.category : roleLabel}</span>
         ${club ? `<span class="badge">${club.name}</span>` : ''}
-        <span class="badge">POT ~${p.potential}</span>
+        ${p.limitBroken ? '<span class="badge limit">🔥 LIMITE 200</span>' : `<span class="badge">POT ~${p.potential}</span>`}
         <span class="badge">💰 ${fmtMoney(p.value)}</span>
         ${p.injury ? `<span class="badge red">🤕 ${p.injury.weeks} sem</span>` : ''}
         ${rating > 0 ? `<span class="badge gold">⭐ ${rating.toFixed(2)}</span>` : ''}
@@ -3368,14 +3423,34 @@ function renderOverview(el) {
         </div>
       </div>
     </div>
+    ${limitBreakCard()}
     <div class="card">
-      <h3>Atributos <span class="section-tag">OVR ${p.overall} · POT ~${p.potential}</span></h3>
+      <h3>Atributos <span class="section-tag">OVR ${p.overall} · ${p.limitBroken ? '🔥 TETO 200' : 'POT ~' + p.potential}</span></h3>
       ${(p.statPoints || 0) > 0
         ? `<div class="points-banner">⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Toque em <strong>+</strong> para evoluir um atributo.</div>`
         : '<p class="faint" style="font-size:.78rem;margin-bottom:10px">Jogue bem para ganhar pontos de status e evoluir seus atributos.</p>'}
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  const lbBtn = $('#btn-limitbreak');
+  if (lbBtn) {
+    lbBtn.onclick = () => {
+      const r = doLimitBreak(G);
+      if (r.ok) {
+        saveToStorage(G);
+        renderHeader();
+        renderTab();
+        eventQueue = [{
+          type: 'limitbreak',
+          text: 'LIMIT BREAK! Você rompeu seus limites: o teto de TODOS os atributos agora é 200, e cada partida rende 4× mais pontos de status. Para chegar ao Overall 200, você precisará de TUDO em 200. Boa sorte, lenda.',
+        }];
+        showNextEvent();
+      } else {
+        toast(`⚠️ ${r.reason}`);
+      }
+    };
+  }
 
   // botões de gasto de pontos de status
   el.querySelectorAll('button[data-up]').forEach((b) => {
@@ -3404,6 +3479,22 @@ function renderOverview(el) {
   }
 }
 
+function limitBreakCard() {
+  const p = G.player;
+  if (p.limitBroken) {
+    const maxed = spendableAttrs(p.position).every((k) => p.attrs[k] >= 200);
+    return maxed
+      ? '<div class="card limit-card"><h3>👑 PERFEIÇÃO ABSOLUTA</h3><p>Todos os atributos em 200. Você é o jogador definitivo — Overall 200.</p></div>'
+      : '';
+  }
+  if (!canLimitBreak(G)) return '';
+  return `<div class="card limit-card">
+    <h3>🔥 LIMIT BREAK DISPONÍVEL</h3>
+    <p style="margin-bottom:12px">Você atingiu seu <strong>potencial máximo</strong>! Rompa seus limites para elevar o teto de TODOS os atributos para <strong>200</strong> — e cada partida passará a render <strong>4× mais</strong> pontos de status.</p>
+    <button id="btn-limitbreak" class="btn gold big" style="width:100%">🔓 ROMPER LIMITES</button>
+  </div>`;
+}
+
 function retireCard() {
   const p = G.player;
   if (G.wantRetire) return '<div class="card"><p>📣 Você anunciou que se aposenta ao fim da temporada.</p></div>';
@@ -3419,6 +3510,7 @@ function attrColumns(p) {
   const titles = { attack: '⚔️ Ataque', passing: '🎯 Passe', dribbling: '✨ Drible', defense: '🛡️ Defesa', physical: '💪 Físico', goalkeeping: '🧤 Goleiro' };
   const canSpend = (p.statPoints || 0) > 0;
   const allowed = canSpend ? spendableAttrs(p.position) : [];
+  const attrCap = p.limitBroken ? 200 : 99;
   return groups.map((g) => {
     const keys = ATTR_GROUPS[g];
     const avg = Math.round(keys.reduce((a, k) => a + p.attrs[k], 0) / keys.length);
@@ -3428,13 +3520,15 @@ function attrColumns(p) {
       ${keys.map((k) => {
         const v = p.attrs[k];
         const t = attrTier(v);
-        const upBtn = canSpend && allowed.includes(k) && v < 99
+        // pós-limit-break a barra representa a escala 0-200
+        const pct = Math.min(100, p.limitBroken ? v / 2 : v);
+        const upBtn = canSpend && allowed.includes(k) && v < attrCap
           ? `<button type="button" class="up-btn" data-up="${k}" title="Gastar 1 ponto">+</button>` : '';
         return `<div class="attr-row ${upBtn ? 'has-up' : ''}">
           <span class="attr-name">${ATTR_NAMES[k]}</span>
           <span class="attr-val v-${t}">${v}</span>
           ${upBtn}
-          <span class="bar"><i class="bar-${t}" style="width:${v}%"></i></span>
+          <span class="bar"><i class="bar-${t}" style="width:${pct}%"></i></span>
         </div>`;
       }).join('')}
     </div>`;
@@ -3832,8 +3926,8 @@ function showNextEvent() {
         ${m.stats.statPoints > 0 ? `<div class="points-banner" style="margin-top:12px">⬆ Você ganhou <strong>+${m.stats.statPoints}</strong> ponto${m.stats.statPoints > 1 ? 's' : ''} de status! Distribua na aba Jogador.</div>` : ''}` : '<div class="event-line" style="margin-top:12px">Você não entrou em campo nesta partida.</div>'}`;
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
-    const gold = e.type === 'title' || e.type === 'award';
-    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟' }[e.type] || '📢';
+    const gold = e.type === 'title' || e.type === 'award' || e.type === 'limitbreak';
+    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟', limitbreak: '🔥' }[e.type] || '📢';
     box.innerHTML = `<div class="event-line ${gold ? 'gold-ev' : 'big'}"><span class="event-emoji">${emoji}</span>${e.text}</div>`;
     $('#modal-close').textContent = 'Ok';
   }

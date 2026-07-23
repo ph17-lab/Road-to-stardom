@@ -13,7 +13,7 @@ import {
   NAT_WINDOW_WEEKS, WORLD_CLUB_CUP_WEEK,
 } from './competitions.js';
 import { NATIONS } from '../data/nations.js';
-import { ATTR_GROUPS, ATTR_NAMES, calcOverall } from './attributes.js';
+import { ATTR_GROUPS, ATTR_NAMES, calcOverall, LIMIT_BREAK_CAP } from './attributes.js';
 import { seed, getSeed, ri, gauss, clamp, chance, choice } from './rng.js';
 
 export const SEASON_WEEKS = 40;
@@ -130,7 +130,8 @@ function trainQuality(G) {
   return G.player.youth ? club.academy : club.academy * 0.5 + club.rep * 0.5;
 }
 
-// Pontos de status ganhos pela atuação (o usuário distribui nos atributos)
+// Pontos de status ganhos pela atuação (o usuário distribui nos atributos).
+// Após o limit break, cada partida rende 4x mais pontos.
 function statPointsForRating(stats) {
   let pts = 0;
   if (stats.rating >= 8.5) pts = 3;
@@ -143,7 +144,7 @@ function statPointsForRating(stats) {
 function applyStats(G, stats, comp) {
   const p = G.player;
   const s = p.seasonStats;
-  const gained = statPointsForRating(stats);
+  const gained = statPointsForRating(stats) * (p.limitBroken ? 4 : 1);
   p.statPoints = (p.statPoints || 0) + gained;
   stats.statPoints = gained;
   s.apps++;
@@ -799,21 +800,45 @@ export function spendableAttrs(position) {
 /**
  * Gasta 1 ponto de status para aumentar um atributo em +1.
  * O overall resultante nunca pode ultrapassar o potencial.
+ * Após o limit break, o teto de cada atributo sobe de 99 para 200.
  */
 export function spendStatPoint(G, attr) {
   const p = G.player;
+  const cap = p.limitBroken ? LIMIT_BREAK_CAP : 99;
   if ((p.statPoints || 0) <= 0) return { ok: false, reason: 'Sem pontos disponíveis' };
   if (!spendableAttrs(p.position).includes(attr)) return { ok: false, reason: 'Atributo inválido para sua posição' };
-  if (p.attrs[attr] >= 99) return { ok: false, reason: 'Atributo já está no máximo' };
+  if (p.attrs[attr] >= cap) return { ok: false, reason: 'Atributo já está no máximo' };
   p.attrs[attr]++;
   const newOvr = calcOverall(p.attrs, p.position);
   if (newOvr > p.potential) {
     p.attrs[attr]--;
-    return { ok: false, reason: 'Você atingiu o teto do seu potencial' };
+    return { ok: false, reason: p.limitBroken ? 'Teto absoluto atingido' : 'Você atingiu o teto do seu potencial — hora do LIMIT BREAK?' };
   }
   p.overall = newOvr;
   p.statPoints--;
   p.value = marketValue(p);
+  return { ok: true };
+}
+
+export function canLimitBreak(G) {
+  const p = G.player;
+  return !p.limitBroken && p.overall >= p.potential;
+}
+
+/**
+ * LIMIT BREAK: disponível ao atingir o potencial máximo. O teto de todos os
+ * atributos e do overall sobe para 200, e os pontos de status rendem 4x.
+ * Overall 200 exige todos os atributos relevantes em 200.
+ */
+export function doLimitBreak(G) {
+  const p = G.player;
+  if (p.limitBroken) return { ok: false, reason: 'Você já rompeu seus limites' };
+  if (p.overall < p.potential) return { ok: false, reason: 'Atinja seu potencial máximo primeiro' };
+  p.limitBroken = true;
+  p.potential = LIMIT_BREAK_CAP;
+  p.morale = clamp(p.morale + 15, 10, 99);
+  p.reputation = clamp(p.reputation + 10, 1, 100);
+  addNews(G, `LIMIT BREAK! ${fullName(p)} rompe todos os limites conhecidos. Analistas afirmam: não há mais teto para o craque.`);
   return { ok: true };
 }
 

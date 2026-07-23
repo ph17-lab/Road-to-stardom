@@ -274,6 +274,14 @@ small { font-size: .8rem; }
 .ovr-ring.tier-gold   { --ring-color: var(--gold); }   .ovr-ring.tier-gold   .ovr-num { color: var(--gold); }
 .ovr-ring.tier-silver { --ring-color: var(--silver); } .ovr-ring.tier-silver .ovr-num { color: var(--silver); }
 .ovr-ring.tier-bronze { --ring-color: var(--bronze); } .ovr-ring.tier-bronze .ovr-num { color: var(--bronze); }
+/* pós-limit-break: fogo */
+.ovr-ring.tier-limit { --ring-color: #ff5f6d; animation: limit-glow 1.8s ease-in-out infinite; }
+.ovr-ring.tier-limit .ovr-num { color: #ff8a5c; font-size: 1.35rem; text-shadow: 0 0 14px #ff5f6d88; }
+.ovr-ring.tier-limit.sm .ovr-num { font-size: 1rem; }
+@keyframes limit-glow {
+  0%, 100% { box-shadow: 0 0 18px -4px #ff5f6d66; }
+  50% { box-shadow: 0 0 30px -2px #ff5f6dbb; }
+}
 
 /* ---------- Header da carreira ---------- */
 .career-header {
@@ -313,6 +321,15 @@ small { font-size: .8rem; }
 .badge.red { color: #fff; background: var(--red); border: none; }
 .badge.blue { color: #04121f; background: var(--accent2); border: none; }
 .badge.purple { color: #fff; background: var(--purple); border: none; }
+.badge.limit { color: #fff; background: linear-gradient(135deg, #ff5f6d, #d63a6a); border: none; box-shadow: 0 0 14px -2px #ff5f6d99; }
+
+/* Card do Limit Break */
+.limit-card {
+  border: 2px solid #ff5f6d;
+  background: radial-gradient(400px 120px at 50% 0%, #ff5f6d22, transparent), linear-gradient(180deg, var(--card), #111c33);
+  animation: limit-glow 2s ease-in-out infinite;
+}
+.limit-card h3 { color: #ff8a5c; }
 
 /* ---------- Tabs ---------- */
 .tabs {
@@ -369,6 +386,8 @@ small { font-size: .8rem; }
 .v-good  { color: var(--accent); } .bar-good  { background: linear-gradient(90deg, var(--accent-d), var(--accent)); }
 .v-ok    { color: var(--gold); }   .bar-ok    { background: linear-gradient(90deg, #c99a1e, var(--gold)); }
 .v-low   { color: #e0864f; }       .bar-low   { background: linear-gradient(90deg, #a85a2e, #e0864f); }
+.v-limit { color: #ff8a5c; text-shadow: 0 0 10px #ff5f6d66; }
+.bar-limit { background: linear-gradient(90deg, #ff5f6d, #ffc371); }
 
 /* ---------- Tabelas (estilizadas, não "wiki") ---------- */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }

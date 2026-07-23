@@ -59,13 +59,18 @@ export function groupAvg(attrs, group) {
   return keys.reduce((sum, k) => sum + attrs[k], 0) / keys.length;
 }
 
+// Teto absoluto pós-limit-break: atributos e overall podem chegar a 200
+export const LIMIT_BREAK_CAP = 200;
+
 export function calcOverall(attrs, position) {
   const weights = POS_WEIGHTS[position];
   let ovr = 0;
   for (const [group, w] of Object.entries(weights)) {
     ovr += groupAvg(attrs, group) * w;
   }
-  return clamp(Math.round(ovr), 1, 99);
+  // como o overall é uma média ponderada, só chega a 200 com TODOS os
+  // atributos relevantes em 200 (atributos normais nunca passam de 99)
+  return clamp(Math.round(ovr), 1, LIMIT_BREAK_CAP);
 }
 
 // Grupos mais relevantes da posição (para treino/evolução direcionada)
