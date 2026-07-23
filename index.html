@@ -13,12 +13,13 @@
     <!-- Tela inicial -->
     <section id="screen-start" class="screen active">
       <div class="hero">
-        <h1>⚽ ROAD TO STARDOM</h1>
+        <span class="logo-badge">⚽</span>
+        <h1>ROAD TO STARDOM</h1>
         <p class="subtitle">Modo Carreira de Jogador — da base à lenda mundial</p>
         <div class="hero-buttons">
-          <button id="btn-new" class="btn primary big">Nova carreira</button>
-          <button id="btn-continue" class="btn big" hidden>Continuar carreira</button>
-          <button id="btn-import" class="btn small-btn">Importar save</button>
+          <button id="btn-new" class="btn primary big">🌟 Nova carreira</button>
+          <button id="btn-continue" class="btn big" hidden>▶ Continuar carreira</button>
+          <button id="btn-import" class="btn ghost small-btn">Importar save</button>
           <input type="file" id="import-file" accept=".json" hidden>
         </div>
       </div>
@@ -26,70 +27,98 @@
 
     <!-- Criação do jogador -->
     <section id="screen-create" class="screen">
-      <h2>Crie seu jogador</h2>
-      <form id="create-form" class="create-grid">
-        <label>Nome
-          <input name="firstName" required maxlength="20" placeholder="Ex.: Pedro">
-        </label>
-        <label>Sobrenome
-          <input name="lastName" required maxlength="20" placeholder="Ex.: Silva">
-        </label>
-        <label>Idade inicial
-          <select name="age"></select>
-        </label>
-        <label>Nacionalidade
-          <select name="nationality"></select>
-        </label>
-        <label>País onde inicia a carreira
-          <select name="country"></select>
-        </label>
-        <label>Pé dominante
-          <select name="foot">
-            <option>Direito</option>
-            <option>Esquerdo</option>
-            <option>Ambidestro</option>
-          </select>
-        </label>
-        <label>Posição
-          <select name="position"></select>
-        </label>
-        <label>Altura (cm)
-          <input name="height" type="number" min="160" max="205" value="178">
-        </label>
-        <label>Número da camisa preferido
-          <input name="shirt" type="number" min="1" max="99" value="10">
-        </label>
-        <label>Estilo de jogador
-          <select name="style"></select>
-        </label>
+      <h2>🎮 Crie seu jogador</h2>
+      <form id="create-form" class="create-wrap">
+        <div class="field-row">
+          <div class="field">
+            <label>Nome</label>
+            <input name="firstName" required maxlength="20" placeholder="Ex.: Pedro" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Sobrenome</label>
+            <input name="lastName" required maxlength="20" placeholder="Ex.: Silva" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Idade inicial</label>
+          <div class="chips" data-field="age"></div>
+        </div>
+
+        <div class="field">
+          <label>Posição</label>
+          <div class="chips compact" data-field="position"></div>
+        </div>
+
+        <div class="field">
+          <label>Pé dominante</label>
+          <div class="chips" data-field="foot"></div>
+        </div>
+
+        <div class="field">
+          <label>Estilo de jogador</label>
+          <div class="chips" data-field="style"></div>
+          <p class="style-desc" id="style-desc"></p>
+        </div>
+
+        <div class="field">
+          <label>Nacionalidade</label>
+          <div class="chips compact" data-field="nationality"></div>
+        </div>
+
+        <div class="field">
+          <label>País onde inicia a carreira <span class="faint">(define os clubes da roleta)</span></label>
+          <div class="chips compact" data-field="country"></div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Altura</label>
+            <div class="stepper" data-stepper="height">
+              <button type="button" data-d="-1">−</button>
+              <span class="val" id="height-val">178 cm</span>
+              <button type="button" data-d="1">+</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Camisa</label>
+            <div class="stepper" data-stepper="shirt">
+              <button type="button" data-d="-1">−</button>
+              <span class="val" id="shirt-val">10</span>
+              <button type="button" data-d="1">+</button>
+            </div>
+          </div>
+        </div>
+
         <div class="form-actions">
-          <button type="button" id="btn-back-start" class="btn">Voltar</button>
-          <button type="submit" class="btn primary">Continuar para o sorteio da base →</button>
+          <button type="button" id="btn-back-start" class="btn ghost">← Voltar</button>
+          <button type="submit" class="btn primary">Ir para o sorteio da base →</button>
         </div>
       </form>
     </section>
 
     <!-- Roleta da academia -->
     <section id="screen-roll" class="screen">
-      <h2>Sorteio da academia</h2>
-      <p class="muted">Olheiros de <span id="roll-country"></span> avaliaram você. Gire a roleta para descobrir qual clube abrirá as portas da base. Academias de elite são raras!</p>
+      <h2>🎰 Sorteio da academia</h2>
+      <p class="muted">Olheiros de <strong id="roll-country"></strong> avaliaram você. Gire a roleta para descobrir qual clube abrirá as portas da base. Academias de elite são raras!</p>
       <div id="roulette" class="roulette">
+        <div class="roulette-label">Seu novo clube é...</div>
         <div id="roulette-display" class="roulette-display">?</div>
       </div>
       <div id="roll-result" class="roll-result" hidden>
         <h3 id="roll-club"></h3>
-        <p id="roll-text"></p>
+        <p id="roll-text" class="muted"></p>
         <div class="roll-stats">
-          <div class="stat-chip">Categoria<br><strong id="roll-cat"></strong></div>
-          <div class="stat-chip">Academia<br><strong id="roll-academy"></strong></div>
-          <div class="stat-chip">Overall inicial<br><strong id="roll-ovr"></strong></div>
-          <div class="stat-chip">Potencial<br><strong id="roll-pot"></strong></div>
+          <div class="stat-chip">Categoria<strong id="roll-cat"></strong></div>
+          <div class="stat-chip">Academia<strong id="roll-academy"></strong></div>
+          <div class="stat-chip">Overall<strong id="roll-ovr"></strong></div>
+          <div class="stat-chip">Potencial<strong id="roll-pot"></strong></div>
         </div>
       </div>
-      <div class="form-actions">
-        <button id="btn-roll" class="btn primary big">🎰 Roletar</button>
-        <button id="btn-reroll" class="btn" hidden>Roletar novamente</button>
-        <button id="btn-accept-roll" class="btn primary" hidden>Aceitar e começar carreira ✔</button>
+      <div class="form-actions" style="justify-content:center">
+        <button id="btn-roll" class="btn gold big">🎰 Girar a roleta</button>
+        <button id="btn-reroll" class="btn" hidden>🔄 Roletar novamente</button>
+        <button id="btn-accept-roll" class="btn primary big" hidden>✔ Aceitar e começar</button>
       </div>
     </section>
 
