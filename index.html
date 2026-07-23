@@ -387,6 +387,8 @@ small { font-size: .8rem; }
   padding: 11px 14px; margin-bottom: 12px;
   font-size: .92rem; color: var(--text);
 }
+.step-picker { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.step-picker .chip { padding: 7px 15px; font-size: .9rem; }
 .attr-row .attr-name { color: var(--muted); }
 .attr-row .attr-val { text-align: right; font-weight: 800; font-size: .95rem; }
 .attr-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: #0c1424; overflow: hidden; margin-top: -2px; }
@@ -2985,6 +2987,23 @@ function spendStatPoint(G, attr) {
   return { ok: true };
 }
 
+/**
+ * Gasta até `amount` pontos de status em um atributo de uma vez
+ * (amount = Infinity gasta o máximo possível). Para no teto do atributo,
+ * no teto do potencial ou quando acabam os pontos.
+ * Retorna { spent, reason } — reason preenchido quando 0 foram gastos.
+ */
+function spendStatPoints(G, attr, amount = 1) {
+  let spent = 0;
+  let last = null;
+  while (spent < amount) {
+    last = spendStatPoint(G, attr);
+    if (!last.ok) break;
+    spent++;
+  }
+  return { spent, reason: spent === 0 && last ? last.reason : null };
+}
+
 function canLimitBreak(G) {
   const p = G.player;
   return !p.limitBroken && p.overall >= p.potential;
@@ -3108,6 +3127,10 @@ function clearStorage(storage = defaultStorage()) {
 let G = null;
 let activeTab = 'overview';
 let eventQueue = [];
+
+// Quantidade de pontos gastos por toque no botão "+" (aba Jogador)
+const STEP_OPTIONS = [1, 10, 100, Infinity];
+let spendStep = 1;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -3450,11 +3473,27 @@ function renderOverview(el) {
     <div class="card">
       <h3>Atributos <span class="section-tag">OVR ${p.overall} · ${p.limitBroken ? '🔥 TETO 200' : 'POT ~' + p.potential}</span></h3>
       ${(p.statPoints || 0) > 0
-        ? `<div class="points-banner">⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Toque em <strong>+</strong> para evoluir um atributo.</div>`
+        ? `<div class="points-banner">
+             <div>⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Escolha quantos gastar por toque no <strong>+</strong>:</div>
+             <div class="step-picker" id="step-picker">
+               ${STEP_OPTIONS.map((s) => `<button type="button" class="chip ${spendStep === s ? 'selected' : ''}" data-step="${s}">${s === Infinity ? 'Máx' : '+' + s}</button>`).join('')}
+             </div>
+           </div>`
         : '<p class="faint" style="font-size:.78rem;margin-bottom:10px">Jogue bem para ganhar pontos de status e evoluir seus atributos.</p>'}
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  const picker = $('#step-picker');
+  if (picker) {
+    picker.querySelectorAll('button[data-step]').forEach((b) => {
+      b.onclick = () => {
+        spendStep = b.dataset.step === 'Infinity' ? Infinity : parseInt(b.dataset.step, 10);
+        picker.querySelectorAll('button').forEach((x) => x.classList.remove('selected'));
+        b.classList.add('selected');
+      };
+    });
+  }
 
   const lbBtn = $('#btn-limitbreak');
   if (lbBtn) {
@@ -3475,16 +3514,17 @@ function renderOverview(el) {
     };
   }
 
-  // botões de gasto de pontos de status
+  // botões de gasto de pontos de status (respeitam a quantidade escolhida)
   el.querySelectorAll('button[data-up]').forEach((b) => {
     b.onclick = () => {
-      const r = spendStatPoint(G, b.dataset.up);
-      if (r.ok) {
+      const r = spendStatPoints(G, b.dataset.up, spendStep);
+      if (r.spent > 0) {
         saveToStorage(G);
         renderHeader();
         renderTab();
+        if (r.spent > 1) toast(`⬆ +${r.spent} em ${ATTR_NAMES[b.dataset.up]}`);
       } else {
-        toast(`⚠️ ${r.reason}`);
+        toast(`⚠️ ${r.reason || 'Não foi possível evoluir'}`);
       }
     };
   });

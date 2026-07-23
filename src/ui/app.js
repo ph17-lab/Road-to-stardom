@@ -4,7 +4,7 @@ import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer, rejectOffer,
   negotiate, setTrainingFocus, retirePlayer, careerTotals, nextFixture,
   playerClub, playerLeague, avgRating, fullName, tableStandings,
-  spendStatPoint, spendableAttrs, canLimitBreak, doLimitBreak,
+  spendStatPoints, spendableAttrs, canLimitBreak, doLimitBreak,
 } from '../core/engine.js';
 import { saveToStorage, loadFromStorage, clearStorage, serialize, deserialize } from '../core/save.js';
 import { POSITION_NAMES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
@@ -13,6 +13,10 @@ import { callupThreshold, isCalledUp, roundName, slotsForLeague } from '../core/
 let G = null;
 let activeTab = 'overview';
 let eventQueue = [];
+
+// Quantidade de pontos gastos por toque no botão "+" (aba Jogador)
+const STEP_OPTIONS = [1, 10, 100, Infinity];
+let spendStep = 1;
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -355,11 +359,27 @@ function renderOverview(el) {
     <div class="card">
       <h3>Atributos <span class="section-tag">OVR ${p.overall} · ${p.limitBroken ? '🔥 TETO 200' : 'POT ~' + p.potential}</span></h3>
       ${(p.statPoints || 0) > 0
-        ? `<div class="points-banner">⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Toque em <strong>+</strong> para evoluir um atributo.</div>`
+        ? `<div class="points-banner">
+             <div>⬆ Você tem <strong>${p.statPoints}</strong> ponto${p.statPoints > 1 ? 's' : ''} de status! Escolha quantos gastar por toque no <strong>+</strong>:</div>
+             <div class="step-picker" id="step-picker">
+               ${STEP_OPTIONS.map((s) => `<button type="button" class="chip ${spendStep === s ? 'selected' : ''}" data-step="${s}">${s === Infinity ? 'Máx' : '+' + s}</button>`).join('')}
+             </div>
+           </div>`
         : '<p class="faint" style="font-size:.78rem;margin-bottom:10px">Jogue bem para ganhar pontos de status e evoluir seus atributos.</p>'}
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  const picker = $('#step-picker');
+  if (picker) {
+    picker.querySelectorAll('button[data-step]').forEach((b) => {
+      b.onclick = () => {
+        spendStep = b.dataset.step === 'Infinity' ? Infinity : parseInt(b.dataset.step, 10);
+        picker.querySelectorAll('button').forEach((x) => x.classList.remove('selected'));
+        b.classList.add('selected');
+      };
+    });
+  }
 
   const lbBtn = $('#btn-limitbreak');
   if (lbBtn) {
@@ -380,16 +400,17 @@ function renderOverview(el) {
     };
   }
 
-  // botões de gasto de pontos de status
+  // botões de gasto de pontos de status (respeitam a quantidade escolhida)
   el.querySelectorAll('button[data-up]').forEach((b) => {
     b.onclick = () => {
-      const r = spendStatPoint(G, b.dataset.up);
-      if (r.ok) {
+      const r = spendStatPoints(G, b.dataset.up, spendStep);
+      if (r.spent > 0) {
         saveToStorage(G);
         renderHeader();
         renderTab();
+        if (r.spent > 1) toast(`⬆ +${r.spent} em ${ATTR_NAMES[b.dataset.up]}`);
       } else {
-        toast(`⚠️ ${r.reason}`);
+        toast(`⚠️ ${r.reason || 'Não foi possível evoluir'}`);
       }
     };
   });

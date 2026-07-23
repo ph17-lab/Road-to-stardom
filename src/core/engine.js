@@ -820,6 +820,23 @@ export function spendStatPoint(G, attr) {
   return { ok: true };
 }
 
+/**
+ * Gasta até `amount` pontos de status em um atributo de uma vez
+ * (amount = Infinity gasta o máximo possível). Para no teto do atributo,
+ * no teto do potencial ou quando acabam os pontos.
+ * Retorna { spent, reason } — reason preenchido quando 0 foram gastos.
+ */
+export function spendStatPoints(G, attr, amount = 1) {
+  let spent = 0;
+  let last = null;
+  while (spent < amount) {
+    last = spendStatPoint(G, attr);
+    if (!last.ok) break;
+    spent++;
+  }
+  return { spent, reason: spent === 0 && last ? last.reason : null };
+}
+
 export function canLimitBreak(G) {
   const p = G.player;
   return !p.limitBroken && p.overall >= p.potential;

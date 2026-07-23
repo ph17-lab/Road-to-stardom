@@ -378,6 +378,8 @@ small { font-size: .8rem; }
   padding: 11px 14px; margin-bottom: 12px;
   font-size: .92rem; color: var(--text);
 }
+.step-picker { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.step-picker .chip { padding: 7px 15px; font-size: .9rem; }
 .attr-row .attr-name { color: var(--muted); }
 .attr-row .attr-val { text-align: right; font-weight: 800; font-size: .95rem; }
 .attr-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 4px; background: #0c1424; overflow: hidden; margin-top: -2px; }

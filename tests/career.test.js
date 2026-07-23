@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer,
   setTrainingFocus, careerTotals, nextFixture, retirePlayer, spendStatPoint,
-  spendableAttrs, canLimitBreak, doLimitBreak,
+  spendStatPoints, spendableAttrs, canLimitBreak, doLimitBreak,
   SEASON_WEEKS, MAX_REROLLS,
 } from '../src/core/engine.js';
 import { serialize, deserialize } from '../src/core/save.js';
@@ -125,6 +125,31 @@ test('pontos de status: ganha por partida e distribui manualmente', () => {
   }
   assert.ok(blocked, 'a distribuição deve parar no teto do potencial');
   assert.ok(G.player.overall <= G.player.potential);
+});
+
+test('gasto de pontos em lote (10, 100, máximo)', () => {
+  const G = newGame({ firstName: 'Bulk', lastName: 'Teste', height: 180, position: 'ST', potential: 90, seed: 71 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  G.player.statPoints = 500;
+
+  // gasta 10 de uma vez em finalização
+  const before = G.player.attrs.finishing;
+  const r10 = spendStatPoints(G, 'finishing', 10);
+  assert.equal(r10.spent, 10);
+  assert.equal(G.player.attrs.finishing, before + 10);
+  assert.equal(G.player.statPoints, 490);
+
+  // "máximo" gasta até travar no teto do potencial
+  const rMax = spendStatPoints(G, 'positioning', Infinity);
+  assert.ok(rMax.spent > 0, 'deve gastar vários pontos de uma vez');
+  assert.ok(G.player.overall <= G.player.potential, 'não ultrapassa o potencial');
+
+  // sem pontos, retorna motivo
+  G.player.statPoints = 0;
+  const r0 = spendStatPoints(G, 'finishing', 10);
+  assert.equal(r0.spent, 0);
+  assert.ok(r0.reason);
 });
 
 test('perfil fixado na criação é respeitado pela roleta', () => {
