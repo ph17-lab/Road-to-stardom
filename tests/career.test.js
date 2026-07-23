@@ -339,6 +339,35 @@ test('pontos de status rendem 4x mais após o limit break', () => {
   assert.ok(brokenPts > normalPts, `ganho pós-break (${brokenPts}) deve superar o normal (${normalPts})`);
 });
 
+test('overall acima de 85 atrai propostas de times grandes', () => {
+  const G = makeGame({ seed: 61 });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  // simula um jogador de elite no meio da carreira
+  G.player.youth = false;
+  G.player.category = null;
+  G.player.overall = 88;
+  G.player.age = 22;
+  let giantOffers = 0;
+  for (let w = 0; w < 3; w++) {
+    advanceWeek(G); // a janela abre na semana 2
+    for (const o of G.offers) {
+      if (G.clubs[o.clubId].rep >= 9) giantOffers++;
+    }
+  }
+  assert.ok(giantOffers >= 1, `com OVR 88, gigantes devem mandar proposta (viu ${giantOffers})`);
+  // e com overall modesto, nenhum gigante aparece garantido
+  const G2 = makeGame({ seed: 62 });
+  doRollAcademy(G2);
+  confirmAcademy(G2);
+  G2.player.youth = false;
+  G2.player.overall = 70;
+  G2.player.age = 22;
+  for (let w = 0; w < 3; w++) advanceWeek(G2);
+  const giants2 = G2.offers.filter((o) => G2.clubs[o.clubId].rep >= 9).length;
+  assert.ok(giants2 === 0 || giants2 < giantOffers + 1, 'OVR 70 não deve garantir gigantes');
+});
+
 test('classificação continental vem da posição na tabela da temporada anterior', () => {
   const G = makeGame({ seed: 31 });
   doRollAcademy(G);

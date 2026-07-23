@@ -33,36 +33,59 @@ export function generateOffers(G) {
   else if (score >= 72) n = chance(0.6) ? 1 : 0;
   else if (score >= 62) n = chance(0.3) ? 1 : 0;
   if (p.youth && p.age < 17) n = Math.min(n, 1);
-  if (n === 0) return [];
-
-  // clubes candidatos: elenco compatível com o nível do jogador
-  const candidates = G.clubs.filter((c) => {
-    if (c.id === p.clubId || c.id === p.parentClubId) return false;
-    const fit = p.overall + Math.max(0, p.potential - p.overall) * 0.3;
-    return c.avgOvr - 9 <= fit && c.avgOvr <= fit + 14;
-  });
-  if (candidates.length === 0) return [];
 
   const offers = [];
-  const picked = shuffle(candidates).slice(0, n * 3);
-  for (const c of picked) {
-    if (offers.length >= n) break;
-    // clubes grandes só vêm atrás de quem se destaca
-    const repGapOk = c.rep <= club.rep + 1 || rating >= 7.0 || p.reputation >= 45 || chance(0.15);
-    if (!repGapOk) continue;
-    const isLoan = p.youth || (p.age <= 21 && p.overall < c.avgOvr - 3 && chance(0.5));
-    const value = marketValue(p);
-    offers.push({
-      id: offerSeq++,
-      clubId: c.id,
-      clubName: c.name,
-      type: isLoan ? 'loan' : 'transfer',
-      fee: isLoan ? 0 : Math.round(value * gauss(1.05, 0.15) * 10) / 10,
-      wage: Math.round(wageFor(p, c) * gauss(1.0, 0.1) * 10) / 10,
-      years: isLoan ? 1 : ri(2, 5),
-      negotiated: false,
+
+  // clubes candidatos: elenco compatível com o nível do jogador
+  if (n > 0) {
+    const candidates = G.clubs.filter((c) => {
+      if (c.id === p.clubId || c.id === p.parentClubId) return false;
+      const fit = p.overall + Math.max(0, p.potential - p.overall) * 0.3;
+      return c.avgOvr - 9 <= fit && c.avgOvr <= fit + 14;
     });
+    const picked = shuffle(candidates).slice(0, n * 3);
+    for (const c of picked) {
+      if (offers.length >= n) break;
+      // clubes grandes só vêm atrás de quem se destaca
+      const repGapOk = c.rep <= club.rep + 1 || rating >= 7.0 || p.reputation >= 45 || chance(0.15);
+      if (!repGapOk) continue;
+      const isLoan = p.youth || (p.age <= 21 && p.overall < c.avgOvr - 3 && chance(0.5));
+      const value = marketValue(p);
+      offers.push({
+        id: offerSeq++,
+        clubId: c.id,
+        clubName: c.name,
+        type: isLoan ? 'loan' : 'transfer',
+        fee: isLoan ? 0 : Math.round(value * gauss(1.05, 0.15) * 10) / 10,
+        wage: Math.round(wageFor(p, c) * gauss(1.0, 0.1) * 10) / 10,
+        years: isLoan ? 1 : ri(2, 5),
+        negotiated: false,
+      });
+    }
   }
+
+  // Elite: overall acima de 85 SEMPRE atrai os gigantes do futebol nas janelas
+  if (p.overall > 85) {
+    const already = new Set(offers.map((o) => o.clubId));
+    const giants = shuffle(G.clubs.filter((c) =>
+      c.rep >= 9 && c.id !== p.clubId && c.id !== p.parentClubId && !already.has(c.id)
+    ));
+    const value = marketValue(p);
+    for (const g of giants.slice(0, ri(1, 2))) {
+      offers.push({
+        id: offerSeq++,
+        clubId: g.id,
+        clubName: g.name,
+        type: 'transfer',
+        // gigantes pagam ágio e salários de estrela
+        fee: Math.round(value * gauss(1.2, 0.1) * 10) / 10,
+        wage: Math.round(wageFor(p, g) * gauss(1.15, 0.08) * 10) / 10,
+        years: ri(3, 5),
+        negotiated: false,
+      });
+    }
+  }
+
   return offers;
 }
 
