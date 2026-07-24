@@ -42,7 +42,7 @@
       <form id="create-form" class="create-wrap">
         <p class="muted" style="margin-bottom:20px">
           Você começa aos <strong>15 anos</strong> na base de um clube do Brasil 🇧🇷, como jogador brasileiro.
-          Pé, estilo de jogo e camisa são revelados no <strong>sorteio da academia</strong>.
+          Pé dominante e número da camisa são revelados no <strong>sorteio da academia</strong>.
         </p>
 
         <div class="field-row">
@@ -59,6 +59,12 @@
         <div class="field">
           <label>Posição</label>
           <div class="chips compact" id="pos-chips"></div>
+        </div>
+
+        <div class="field">
+          <label>Estilo de jogo</label>
+          <div class="chips" id="style-chips"></div>
+          <p class="style-desc" id="style-desc"></p>
         </div>
 
         <div class="field">
@@ -116,10 +122,11 @@
       <nav id="career-tabs" class="tabs"></nav>
       <main id="tab-content" class="tab-content"></main>
       <footer class="actions-bar">
-        <button id="btn-advance" class="btn primary">▶ Avançar semana</button>
-        <button id="btn-advance4" class="btn">⏩ Avançar mês</button>
-        <button id="btn-save" class="btn small-btn">💾 Salvar</button>
-        <button id="btn-export" class="btn small-btn">⬇ Exportar</button>
+        <button id="btn-advance" class="btn primary">▶ Semana</button>
+        <button id="btn-advance4" class="btn">⏩ Mês</button>
+        <button id="btn-simseason" class="btn">⏭️ Temporada</button>
+        <button id="btn-save" class="btn small-btn">💾</button>
+        <button id="btn-export" class="btn small-btn">⬇</button>
       </footer>
     </section>
 

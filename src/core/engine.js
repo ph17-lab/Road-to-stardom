@@ -13,6 +13,7 @@ import {
   NAT_WINDOW_WEEKS, WORLD_CLUB_CUP_WEEK,
 } from './competitions.js';
 import { NATIONS } from '../data/nations.js';
+import { offerInterview, ensurePressFields } from './press.js';
 import { ATTR_GROUPS, ATTR_NAMES, calcOverall, LIMIT_BREAK_CAP } from './attributes.js';
 import { seed, getSeed, ri, gauss, clamp, chance, choice } from './rng.js';
 
@@ -53,7 +54,12 @@ export function newGame(cfg) {
     monthMinutes: 0,
     monthPossible: 0,
     wantRetire: false,
+    pendingInterview: null,
+    interviewHistory: [],
+    wcPlayedYear: null,        // ano cuja Copa do Mundo já foi disputada
+    pendingSeasonTitles: [],   // títulos de seleção a somar no fim da temporada
   };
+  ensurePressFields(G);
   startSeasonStructures(G);
   addNews(G, `Sua jornada começa. Olheiros de ${G.country} estão avaliando jovens talentos.`);
   return G;
@@ -447,6 +453,15 @@ export function advanceWeek(G, opts = {}) {
     playWorldClubCup(G, events);
   }
 
+  // Ano de Copa do Mundo: a Copa abre o calendário e a temporada de clubes
+  // vem depois. Disputada cedo (semana 4) em vez do fim da temporada.
+  if (G.week === 4 && G.seasonYear % 4 === 2 && G.wcPlayedYear !== G.seasonYear) {
+    addNews(G, `É ano de Copa do Mundo! A temporada de clubes começa mais tarde — a Copa abre o ano.`);
+    runNationalTournament(G, events, 'Copa do Mundo');
+    G.wcPlayedYear = G.seasonYear;
+    events.push({ type: 'worldcup', text: '🌎 É ANO DE COPA DO MUNDO! Ela abre o calendário; a temporada de clubes começa depois.' });
+  }
+
   // seleção nacional (datas FIFA)
   if (NAT_WINDOW_WEEKS.includes(G.week) && !p.youth && isCalledUp(p)) {
     playNatMatch(G, events);
@@ -501,11 +516,44 @@ export function advanceWeek(G, opts = {}) {
     for (const n of aiMarketNews(G, 1)) addNews(G, n);
   }
 
+  // imprensa: um jornalista pede entrevista de tempos em tempos
+  if (!G.pendingInterview && chance(0.22)) {
+    offerInterview(G);
+    events.push({ type: 'interview', text: 'Um jornalista quer te entrevistar. Vá à aba Imprensa!' });
+  }
+
   G.week++;
   if (G.week > SEASON_WEEKS) {
     endSeason(G, events);
   }
   return events;
+}
+
+// Disputa um torneio de seleções (Copa do Mundo ou continental) e aplica
+// estatísticas/repercussão. Títulos vão para G.pendingSeasonTitles.
+function runNationalTournament(G, events, tournament) {
+  const p = G.player;
+  const isWC = tournament === 'Copa do Mundo';
+  const called = !p.youth && isCalledUp(p);
+  const result = simNationalTournament(p.nationality, isWC);
+  G.pendingSeasonTitles = G.pendingSeasonTitles || [];
+  if (called) {
+    for (let i = 0; i < result.playerMatches; i++) {
+      p.natTeam.caps++;
+      p.seasonStats.natApps++;
+      if (chance(0.22 + (p.overall - 75) / 200)) { p.natTeam.goals++; p.seasonStats.natGoals++; }
+    }
+    if (result.playerWon) {
+      G.pendingSeasonTitles.push(tournament);
+      p.reputation = clamp(p.reputation + 12, 1, 100);
+      addNews(G, `${p.nationality} vence a ${tournament} com ${fullName(p)} no elenco!`);
+      events.push({ type: 'title', text: `🏆 ${tournament} conquistada com a seleção de ${p.nationality}!` });
+    } else {
+      addNews(G, `${result.champion} conquista a ${tournament}. Sua seleção ${called ? 'ficou pelo caminho' : 'não participou'}.`);
+    }
+  } else {
+    addNews(G, `${result.champion} conquista a ${tournament} de ${G.seasonYear}.`);
+  }
 }
 
 function playWorldClubCup(G, events) {
@@ -644,33 +692,16 @@ function endSeason(G, events) {
     }
   }
 
-  // Torneio de seleções no verão
+  // Torneio de seleções no verão (continental). A Copa do Mundo, em anos
+  // de Copa, já foi disputada no início do ano (ver advanceWeek).
   const tournament = tournamentForYear(G.seasonYear, p.nationality);
-  if (tournament) {
-    const isWC = tournament === 'Copa do Mundo';
-    const called = !p.youth && isCalledUp(p);
-    const result = simNationalTournament(p.nationality, isWC);
-    if (called) {
-      // estatísticas do jogador no torneio
-      for (let i = 0; i < result.playerMatches; i++) {
-        p.natTeam.caps++;
-        p.seasonStats.natApps++;
-        if (chance(0.22 + (p.overall - 75) / 200)) {
-          p.natTeam.goals++;
-          p.seasonStats.natGoals++;
-        }
-      }
-      if (result.playerWon) {
-        seasonTitles.push(tournament);
-        p.reputation = clamp(p.reputation + 12, 1, 100);
-        addNews(G, `${p.nationality} vence a ${tournament} com ${fullName(p)} no elenco!`);
-      } else {
-        addNews(G, `${result.champion} conquista a ${tournament}. Sua seleção ficou pelo caminho.`);
-      }
-    } else {
-      addNews(G, `${result.champion} conquista a ${tournament} de ${G.seasonYear}.`);
-    }
+  const wcAlreadyPlayed = tournament === 'Copa do Mundo' && G.wcPlayedYear === G.seasonYear;
+  if (tournament && !wcAlreadyPlayed) {
+    runNationalTournament(G, events, tournament);
   }
+  // soma os títulos de seleção conquistados no ano (inclui a Copa do meio do ano)
+  for (const t of (G.pendingSeasonTitles || [])) seasonTitles.push(t);
+  G.pendingSeasonTitles = [];
 
   // Bola de Ouro
   if (!p.youth && p.overall >= 88 && rating >= 7.3 && p.seasonStats.apps >= 25) {
@@ -966,8 +997,8 @@ export function getPlayableMatch(G) {
       stadium: `CT ${club.name}`,
       teamStr: 48 + club.academy * 2,
       oppStr: 48 + oppClub.academy * 2,
-      ownColor: teamColor(club.name),
-      oppColor: teamColor(oppClub.name),
+      ownColor: M2D_OWN_COLOR,
+      oppColor: M2D_OPP_COLOR,
     };
   }
 
@@ -986,17 +1017,14 @@ export function getPlayableMatch(G) {
     stadium: (isHome ? club : opp).stadium,
     teamStr: teamStrength(club),
     oppStr: teamStrength(opp),
-    ownColor: teamColor(club.name),
-    oppColor: teamColor(opp.name),
+    ownColor: M2D_OWN_COLOR,
+    oppColor: M2D_OPP_COLOR,
   };
 }
 
-// Cor do kit derivada do nome do clube (determinística, só estética no 2D)
-export function teamColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue}, 65%, 52%)`;
-}
+// Cores fixas no 2D: seu time sempre AZUL, adversário sempre VERMELHO
+// (evita qualquer confusão visual entre as equipes).
+const M2D_OWN_COLOR = 'hsl(212, 85%, 55%)';
+const M2D_OPP_COLOR = 'hsl(357, 78%, 55%)';
 
 export { getSeed, seed, avgRating, fullName, marketValue, tableStandings, teamStrength };

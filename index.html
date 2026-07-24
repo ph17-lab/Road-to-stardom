@@ -547,6 +547,26 @@ select.inline option, select option { background: #14213a; color: var(--text); }
   background: #000a; color: #fff; border: 1px solid #fff4; border-radius: 8px; padding: 6px 12px; font-size: .8rem; cursor: pointer; pointer-events: auto; }
 @media (min-width: 760px) { .m2d-quit { bottom: auto; top: 44px; } }
 
+/* ---------- Imprensa / entrevistas ---------- */
+.tab-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); vertical-align: middle; animation: limit-glow 1.4s ease-in-out infinite; }
+.interview-card { border: 1.5px solid var(--accent2); background: radial-gradient(400px 120px at 50% 0%, #38bdf822, transparent), linear-gradient(180deg, var(--card), #111c33); }
+.interview-card .reporter { color: var(--accent2); font-weight: 800; font-size: .82rem; text-transform: uppercase; letter-spacing: .8px; }
+.answers { display: flex; flex-direction: column; gap: 9px; }
+.answer-btn {
+  text-align: left; background: var(--bg2); border: 1.5px solid var(--border2); color: var(--text);
+  border-radius: var(--radius-sm); padding: 13px 15px; font-size: .95rem; cursor: pointer; font-family: inherit;
+  transition: all .13s ease; line-height: 1.35;
+}
+.answer-btn:hover { border-color: var(--accent2); background: #1a2b48; }
+.answer-btn:active { transform: scale(.98); }
+.reactions { display: flex; flex-direction: column; gap: 8px; text-align: left; margin: 4px 0 12px; }
+.reaction { background: var(--card2); border-radius: 9px; padding: 9px 12px; font-size: .88rem; }
+.reaction .r-who { font-weight: 800; margin-right: 4px; }
+.delta-row { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+.delta { font-size: .78rem; font-weight: 800; padding: 4px 11px; border-radius: 999px; }
+.delta.up { background: #35e08a22; color: var(--accent); border: 1px solid #35e08a55; }
+.delta.down { background: #ff5f6d22; color: var(--red); border: 1px solid #ff5f6d55; }
+
 /* botão "Jogar partida" no hub */
 .play-cta {
   display: block; width: 100%; margin-top: 8px;
@@ -615,7 +635,7 @@ select.inline option, select option { background: #14213a; color: var(--text); }
       <form id="create-form" class="create-wrap">
         <p class="muted" style="margin-bottom:20px">
           Você começa aos <strong>15 anos</strong> na base de um clube do Brasil 🇧🇷, como jogador brasileiro.
-          Pé, estilo de jogo e camisa são revelados no <strong>sorteio da academia</strong>.
+          Pé dominante e número da camisa são revelados no <strong>sorteio da academia</strong>.
         </p>
 
         <div class="field-row">
@@ -632,6 +652,12 @@ select.inline option, select option { background: #14213a; color: var(--text); }
         <div class="field">
           <label>Posição</label>
           <div class="chips compact" id="pos-chips"></div>
+        </div>
+
+        <div class="field">
+          <label>Estilo de jogo</label>
+          <div class="chips" id="style-chips"></div>
+          <p class="style-desc" id="style-desc"></p>
         </div>
 
         <div class="field">
@@ -689,10 +715,11 @@ select.inline option, select option { background: #14213a; color: var(--text); }
       <nav id="career-tabs" class="tabs"></nav>
       <main id="tab-content" class="tab-content"></main>
       <footer class="actions-bar">
-        <button id="btn-advance" class="btn primary">▶ Avançar semana</button>
-        <button id="btn-advance4" class="btn">⏩ Avançar mês</button>
-        <button id="btn-save" class="btn small-btn">💾 Salvar</button>
-        <button id="btn-export" class="btn small-btn">⬇ Exportar</button>
+        <button id="btn-advance" class="btn primary">▶ Semana</button>
+        <button id="btn-advance4" class="btn">⏩ Mês</button>
+        <button id="btn-simseason" class="btn">⏭️ Temporada</button>
+        <button id="btn-save" class="btn small-btn">💾</button>
+        <button id="btn-export" class="btn small-btn">⬇</button>
       </footer>
     </section>
 
@@ -1191,8 +1218,6 @@ function createAttributes(position, targetOvr, styleName = 'Completo', height = 
     for (const k of keys) {
       let v = gauss(groupBase, 4);
       if (style.boost.includes(k)) v += 5;
-      if (k === 'heading') v += (height - 178) * 0.25;
-      if (k === 'agility' || k === 'balance') v -= (height - 178) * 0.2;
       attrs[k] = clamp(Math.round(v), 1, 99);
     }
   }
@@ -1208,6 +1233,20 @@ function createAttributes(position, targetOvr, styleName = 'Completo', height = 
         attrs[k] = clamp(attrs[k] + step, 1, 99);
       }
     }
+  }
+
+  // Efeito da altura (aplicado por último para não ser diluído pelo ajuste):
+  // mais alto = mais cabeceio e força; mais baixo = mais ágil e acelerado.
+  applyHeightBias(attrs, height);
+  return attrs;
+}
+
+// Viés físico conforme a altura (referência 178 cm).
+function applyHeightBias(attrs, height) {
+  const d = height - 178;
+  const bias = { heading: d * 0.55, strength: d * 0.38, jumping: d * 0.5, agility: -d * 0.45, acceleration: -d * 0.22, balance: -d * 0.28 };
+  for (const [k, adj] of Object.entries(bias)) {
+    if (attrs[k] != null) attrs[k] = clamp(Math.round(attrs[k] + adj), 1, 99);
   }
   return attrs;
 }
@@ -2233,9 +2272,238 @@ function simNationalTournament(playerNation, isWorldCup) {
 }
 
 
+// ==== src/core/press.js ====
+// Sistema de entrevistas e imprensa (IA simples, baseada em regras).
+// O jornalista faz perguntas conforme o momento da carreira; cada resposta
+// gera uma matéria e repercussão (moral, reputação, relação com torcida,
+// treinador e vestiário), além de reações de outros clubes.
+
+
+
+// Tom de cada opção de resposta: como afeta os "públicos".
+// deltas: morale, reputation, fans, manager, rivals (interesse de clubes)
+const TONE = {
+  humilde:   { morale: +3, reputation: +2, fans: +3, manager: +4, rivals: +0, label: 'Humilde' },
+  confiante: { morale: +5, reputation: +4, fans: +4, manager: +0, rivals: +3, label: 'Confiante' },
+  ambicioso: { morale: +2, reputation: +5, fans: -2, manager: -4, rivals: +6, label: 'Ambicioso' },
+  polemico:  { morale: -1, reputation: +6, fans: -4, manager: -6, rivals: +2, label: 'Polêmico' },
+  focado:    { morale: +4, reputation: +1, fans: +2, manager: +5, rivals: +0, label: 'Focado no time' },
+  leal:      { morale: +4, reputation: +1, fans: +6, manager: +5, rivals: -5, label: 'Leal ao clube' },
+};
+
+// Bancos de perguntas por contexto. Cada opção: { tone, text, headline(fn), reaction(fn) }
+function questionBank(G) {
+  const p = G.player;
+  const club = p.clubId !== null ? G.clubs[p.clubId] : null;
+  const clubName = club ? club.name : 'seu clube';
+  const rating = avgRating(p.seasonStats);
+  const banks = [];
+
+  // Momento: boa fase
+  if (rating >= 7.2 && p.seasonStats.apps >= 3) {
+    banks.push({
+      q: 'Você vive grande fase. A que atribui o bom momento?',
+      opts: [
+        { tone: 'humilde', text: 'É fruto do trabalho do grupo, mérito de todos.' },
+        { tone: 'confiante', text: 'Estou no meu melhor nível e vou manter.' },
+        { tone: 'focado', text: 'Só penso em ajudar o time a vencer.' },
+      ],
+    });
+  }
+  // Momento: má fase
+  if (rating > 0 && rating < 6.3 && p.seasonStats.apps >= 3) {
+    banks.push({
+      q: 'As atuações caíram. Como avalia seu momento?',
+      opts: [
+        { tone: 'humilde', text: 'Preciso trabalhar mais, assumo a responsabilidade.' },
+        { tone: 'confiante', text: 'É passageiro, logo volto a decidir jogos.' },
+        { tone: 'polemico', text: 'Falta o time me dar as condições que preciso.' },
+      ],
+    });
+  }
+  // Interesse de clubes grandes
+  const hasBigInterest = G.offers.some((o) => G.clubs[o.clubId].rep >= 8) || p.overall >= 82;
+  if (hasBigInterest && !p.youth) {
+    banks.push({
+      q: `Grandes clubes observam você. Pensa em deixar o ${clubName}?`,
+      opts: [
+        { tone: 'leal', text: `Estou feliz no ${clubName}, quero vencer aqui.` },
+        { tone: 'ambicioso', text: 'Todo jogador sonha em jogar cada vez mais alto.' },
+        { tone: 'focado', text: 'Meu foco é o presente, o futuro a Deus pertence.' },
+      ],
+    });
+  }
+  // Seleção
+  if (!p.youth && p.overall >= 70) {
+    banks.push({
+      q: 'A seleção de ' + p.nationality + ' é um objetivo?',
+      opts: [
+        { tone: 'humilde', text: 'Seria uma honra, mas primeiro tenho que merecer.' },
+        { tone: 'confiante', text: 'Trabalho para isso e sei que meu momento vai chegar.' },
+        { tone: 'ambicioso', text: 'Quero ser titular e disputar uma Copa do Mundo.' },
+      ],
+    });
+  }
+  // Base / jovem
+  if (p.youth || p.age <= 19) {
+    banks.push({
+      q: 'Você é uma das promessas da base. Como lida com a pressão?',
+      opts: [
+        { tone: 'humilde', text: 'Tento aprender com os mais experientes, dia a dia.' },
+        { tone: 'confiante', text: 'Nasci para isso, quero brilhar o quanto antes.' },
+        { tone: 'focado', text: 'Só penso em evoluir e ajudar quando for chamado.' },
+      ],
+    });
+  }
+  // Rivalidade / próximo jogo (genérico, sempre disponível)
+  banks.push({
+    q: 'O que espera para a sequência da temporada?',
+    opts: [
+      { tone: 'focado', text: 'Vamos com humildade, jogo a jogo.' },
+      { tone: 'confiante', text: 'Podemos brigar por títulos, temos elenco para isso.' },
+      { tone: 'ambicioso', text: 'Quero ser artilheiro e levar o time ao topo.' },
+    ],
+  });
+
+  return banks;
+}
+
+// Uma entrevista disponível? (limita a frequência)
+function interviewAvailable(G) {
+  const p = G.player;
+  if (p.retired || p.clubId === null) return false;
+  if (G.pendingInterview) return true;
+  return false;
+}
+
+// Gera/pega a entrevista atual (uma pergunta com opções)
+function getInterview(G) {
+  if (!G.pendingInterview) return null;
+  return G.pendingInterview;
+}
+
+// Cria uma nova entrevista pendente (chamado pela evolução do tempo)
+function offerInterview(G) {
+  const p = G.player;
+  if (p.retired || p.clubId === null) return null;
+  const banks = questionBank(G);
+  const pick = choice(banks);
+  const reporter = choice(['Globo Esporte', 'ESPN', 'DAZN', 'Marca', 'L\'Équipe', 'Sky Sports', 'Gazzetta']);
+  G.pendingInterview = { q: pick.q, opts: pick.opts, reporter };
+  return G.pendingInterview;
+}
+
+// Responde a entrevista: aplica repercussão e gera matéria + reações.
+// Retorna { headline, article, deltas, reactions }
+function answerInterview(G, optIndex) {
+  const interview = G.pendingInterview;
+  if (!interview) return null;
+  const p = G.player;
+  const club = p.clubId !== null ? G.clubs[p.clubId] : null;
+  const opt = interview.opts[optIndex];
+  const tone = TONE[opt.tone];
+  const name = fullName(p);
+
+  // aplica deltas
+  p.morale = clamp(p.morale + tone.morale, 10, 99);
+  p.reputation = clamp(p.reputation + tone.reputation * 0.4, 1, 100);
+  p.fanSupport = clamp((p.fanSupport ?? 60) + tone.fans, 0, 100);
+  p.managerTrust = clamp((p.managerTrust ?? 60) + tone.manager, 0, 100);
+
+  // manchete e matéria conforme o tom
+  const headline = pressHeadline(name, club, opt.tone, interview);
+  const article = pressArticle(G, opt, tone);
+
+  // reações (comentários da torcida / imprensa / clubes)
+  const reactions = pressReactions(G, opt.tone, tone);
+
+  // rivais: tom ambicioso/confiante pode acender o mercado
+  if (tone.rivals >= 4 && !p.youth && chance(0.5)) {
+    const giants = G.clubs.filter((c) => c.rep >= 8 && c.id !== p.clubId);
+    if (giants.length) {
+      const g = choice(giants);
+      reactions.push({ who: '🕵️ Bastidores', text: `${g.name} monitora a situação de ${name} após as declarações.` });
+    }
+  }
+
+  // registra como notícia
+  G.news.unshift({ year: G.seasonYear, week: G.week, text: `📰 ${headline}` });
+  if (G.news.length > 80) G.news.length = 80;
+
+  // guarda no histórico de entrevistas
+  G.interviewHistory = G.interviewHistory || [];
+  G.interviewHistory.unshift({ year: G.seasonYear, week: G.week, headline, quote: opt.text, tone: tone.label });
+  if (G.interviewHistory.length > 30) G.interviewHistory.length = 30;
+
+  G.pendingInterview = null;
+  return { headline, article, deltas: tone, reactions, quote: opt.text };
+}
+
+function skipInterview(G) {
+  G.pendingInterview = null;
+}
+
+function pressHeadline(name, club, tone, interview) {
+  const clubName = club ? club.name : '';
+  const H = {
+    humilde: [`"É mérito do grupo", diz ${name}`, `${name} poupa elogios a si mesmo`],
+    confiante: [`${name}: "Estou no meu melhor nível"`, `${name} demonstra confiança em entrevista`],
+    ambicioso: [`${name} admite sonho de voos maiores`, `Declaração de ${name} agita o mercado`],
+    polemico: [`Polêmica: ${name} cutuca o ${clubName}`, `${name} gera climão com declaração`],
+    focado: [`${name} prega foco total no ${clubName}`, `"Jogo a jogo", afirma ${name}`],
+    leal: [`${name} jura amor ao ${clubName}`, `${name} descarta saída e agrada torcida`],
+  };
+  return choice(H[tone] || H.focado);
+}
+
+function pressArticle(G, opt, tone) {
+  const p = G.player;
+  const club = p.clubId !== null ? G.clubs[p.clubId] : null;
+  const parts = [];
+  parts.push(`Em entrevista, ${fullName(p)} afirmou: "${opt.text}"`);
+  if (tone.fans > 3) parts.push('A torcida aprovou a postura nas redes sociais.');
+  else if (tone.fans < 0) parts.push('Parte da torcida reagiu com irritação.');
+  if (tone.manager > 3) parts.push(`Nos bastidores, o técnico ${club ? club.manager : ''} gostou do discurso.`);
+  else if (tone.manager < 0) parts.push('A comissão técnica não gostou do tom.');
+  return parts.join(' ');
+}
+
+function pressReactions(G, toneKey, tone) {
+  const out = [];
+  const fanPool = {
+    pos: ['Que ídolo! 👏', 'Esse é raça, representa a camisa!', 'Falou tudo, craque demais.'],
+    neg: ['Achei arrogante...', 'Foca no jogo e para de falar!', 'Declaração infeliz.'],
+    neutral: ['Vamos ver dentro de campo.', 'Bola pra frente.'],
+  };
+  const kind = tone.fans > 3 ? 'pos' : tone.fans < 0 ? 'neg' : 'neutral';
+  out.push({ who: '💬 Torcida', text: choice(fanPool[kind]) });
+
+  if (tone.manager < 0) out.push({ who: '📋 Comissão', text: 'O treinador pediu foco e evitou comentar publicamente.' });
+  else if (tone.manager > 3) out.push({ who: '📋 Comissão', text: 'O treinador elogiou a mentalidade do jogador.' });
+
+  const pressPool = {
+    ambicioso: 'Analistas veem o jogador cada vez mais perto de uma transferência.',
+    confiante: 'Comentaristas destacam a confiança do atleta.',
+    polemico: 'A imprensa repercute a declaração polêmica.',
+    humilde: 'Especialistas elogiam a maturidade do jovem.',
+    focado: 'A imprensa aprova o profissionalismo.',
+    leal: 'A torcida vibra com a demonstração de amor à camisa.',
+  };
+  out.push({ who: '🎙️ Imprensa', text: pressPool[toneKey] || pressPool.focado });
+  return out;
+}
+
+// Inicializa campos de relação se ainda não existirem (saves antigos)
+function ensurePressFields(G) {
+  const p = G.player;
+  if (p.fanSupport == null) p.fanSupport = 60;
+  if (p.managerTrust == null) p.managerTrust = 60;
+}
+
 // ==== src/core/engine.js ====
 // Motor principal: orquestra temporadas, semanas, partidas, evolução,
 // transferências, seleções, prêmios e o mundo vivo.
+
 
 
 
@@ -2283,7 +2551,12 @@ function newGame(cfg) {
     monthMinutes: 0,
     monthPossible: 0,
     wantRetire: false,
+    pendingInterview: null,
+    interviewHistory: [],
+    wcPlayedYear: null,        // ano cuja Copa do Mundo já foi disputada
+    pendingSeasonTitles: [],   // títulos de seleção a somar no fim da temporada
   };
+  ensurePressFields(G);
   startSeasonStructures(G);
   addNews(G, `Sua jornada começa. Olheiros de ${G.country} estão avaliando jovens talentos.`);
   return G;
@@ -2677,6 +2950,15 @@ function advanceWeek(G, opts = {}) {
     playWorldClubCup(G, events);
   }
 
+  // Ano de Copa do Mundo: a Copa abre o calendário e a temporada de clubes
+  // vem depois. Disputada cedo (semana 4) em vez do fim da temporada.
+  if (G.week === 4 && G.seasonYear % 4 === 2 && G.wcPlayedYear !== G.seasonYear) {
+    addNews(G, `É ano de Copa do Mundo! A temporada de clubes começa mais tarde — a Copa abre o ano.`);
+    runNationalTournament(G, events, 'Copa do Mundo');
+    G.wcPlayedYear = G.seasonYear;
+    events.push({ type: 'worldcup', text: '🌎 É ANO DE COPA DO MUNDO! Ela abre o calendário; a temporada de clubes começa depois.' });
+  }
+
   // seleção nacional (datas FIFA)
   if (NAT_WINDOW_WEEKS.includes(G.week) && !p.youth && isCalledUp(p)) {
     playNatMatch(G, events);
@@ -2731,11 +3013,44 @@ function advanceWeek(G, opts = {}) {
     for (const n of aiMarketNews(G, 1)) addNews(G, n);
   }
 
+  // imprensa: um jornalista pede entrevista de tempos em tempos
+  if (!G.pendingInterview && chance(0.22)) {
+    offerInterview(G);
+    events.push({ type: 'interview', text: 'Um jornalista quer te entrevistar. Vá à aba Imprensa!' });
+  }
+
   G.week++;
   if (G.week > SEASON_WEEKS) {
     endSeason(G, events);
   }
   return events;
+}
+
+// Disputa um torneio de seleções (Copa do Mundo ou continental) e aplica
+// estatísticas/repercussão. Títulos vão para G.pendingSeasonTitles.
+function runNationalTournament(G, events, tournament) {
+  const p = G.player;
+  const isWC = tournament === 'Copa do Mundo';
+  const called = !p.youth && isCalledUp(p);
+  const result = simNationalTournament(p.nationality, isWC);
+  G.pendingSeasonTitles = G.pendingSeasonTitles || [];
+  if (called) {
+    for (let i = 0; i < result.playerMatches; i++) {
+      p.natTeam.caps++;
+      p.seasonStats.natApps++;
+      if (chance(0.22 + (p.overall - 75) / 200)) { p.natTeam.goals++; p.seasonStats.natGoals++; }
+    }
+    if (result.playerWon) {
+      G.pendingSeasonTitles.push(tournament);
+      p.reputation = clamp(p.reputation + 12, 1, 100);
+      addNews(G, `${p.nationality} vence a ${tournament} com ${fullName(p)} no elenco!`);
+      events.push({ type: 'title', text: `🏆 ${tournament} conquistada com a seleção de ${p.nationality}!` });
+    } else {
+      addNews(G, `${result.champion} conquista a ${tournament}. Sua seleção ${called ? 'ficou pelo caminho' : 'não participou'}.`);
+    }
+  } else {
+    addNews(G, `${result.champion} conquista a ${tournament} de ${G.seasonYear}.`);
+  }
 }
 
 function playWorldClubCup(G, events) {
@@ -2874,33 +3189,16 @@ function endSeason(G, events) {
     }
   }
 
-  // Torneio de seleções no verão
+  // Torneio de seleções no verão (continental). A Copa do Mundo, em anos
+  // de Copa, já foi disputada no início do ano (ver advanceWeek).
   const tournament = tournamentForYear(G.seasonYear, p.nationality);
-  if (tournament) {
-    const isWC = tournament === 'Copa do Mundo';
-    const called = !p.youth && isCalledUp(p);
-    const result = simNationalTournament(p.nationality, isWC);
-    if (called) {
-      // estatísticas do jogador no torneio
-      for (let i = 0; i < result.playerMatches; i++) {
-        p.natTeam.caps++;
-        p.seasonStats.natApps++;
-        if (chance(0.22 + (p.overall - 75) / 200)) {
-          p.natTeam.goals++;
-          p.seasonStats.natGoals++;
-        }
-      }
-      if (result.playerWon) {
-        seasonTitles.push(tournament);
-        p.reputation = clamp(p.reputation + 12, 1, 100);
-        addNews(G, `${p.nationality} vence a ${tournament} com ${fullName(p)} no elenco!`);
-      } else {
-        addNews(G, `${result.champion} conquista a ${tournament}. Sua seleção ficou pelo caminho.`);
-      }
-    } else {
-      addNews(G, `${result.champion} conquista a ${tournament} de ${G.seasonYear}.`);
-    }
+  const wcAlreadyPlayed = tournament === 'Copa do Mundo' && G.wcPlayedYear === G.seasonYear;
+  if (tournament && !wcAlreadyPlayed) {
+    runNationalTournament(G, events, tournament);
   }
+  // soma os títulos de seleção conquistados no ano (inclui a Copa do meio do ano)
+  for (const t of (G.pendingSeasonTitles || [])) seasonTitles.push(t);
+  G.pendingSeasonTitles = [];
 
   // Bola de Ouro
   if (!p.youth && p.overall >= 88 && rating >= 7.3 && p.seasonStats.apps >= 25) {
@@ -3196,8 +3494,8 @@ function getPlayableMatch(G) {
       stadium: `CT ${club.name}`,
       teamStr: 48 + club.academy * 2,
       oppStr: 48 + oppClub.academy * 2,
-      ownColor: teamColor(club.name),
-      oppColor: teamColor(oppClub.name),
+      ownColor: M2D_OWN_COLOR,
+      oppColor: M2D_OPP_COLOR,
     };
   }
 
@@ -3216,18 +3514,15 @@ function getPlayableMatch(G) {
     stadium: (isHome ? club : opp).stadium,
     teamStr: teamStrength(club),
     oppStr: teamStrength(opp),
-    ownColor: teamColor(club.name),
-    oppColor: teamColor(opp.name),
+    ownColor: M2D_OWN_COLOR,
+    oppColor: M2D_OPP_COLOR,
   };
 }
 
-// Cor do kit derivada do nome do clube (determinística, só estética no 2D)
-function teamColor(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue}, 65%, 52%)`;
-}
+// Cores fixas no 2D: seu time sempre AZUL, adversário sempre VERMELHO
+// (evita qualquer confusão visual entre as equipes).
+const M2D_OWN_COLOR = 'hsl(212, 85%, 55%)';
+const M2D_OPP_COLOR = 'hsl(357, 78%, 55%)';
 
 
 // ==== src/core/save.js ====
@@ -3955,6 +4250,7 @@ function abbr(name) {
 
 
 
+
 let G = null;
 let activeTab = 'overview';
 let eventQueue = [];
@@ -4048,6 +4344,17 @@ function routeToScreen() {
 // brasileiro; pé, estilo e camisa são sorteados na roleta.
 
 let chosenPosition = 'ST';
+let chosenStyle = 'Finalizador';
+
+const STYLE_DESC = {
+  'Finalizador': 'Faro de gol — finalização, posicionamento e voleios.',
+  'Craque técnico': 'Magia com a bola — drible, controle e visão.',
+  'Velocista': 'Explosão pura — velocidade, aceleração e agilidade.',
+  'Motor (box-to-box)': 'Pulmão infinito — resistência, desarme e chutes de longe.',
+  'Cérebro (armador)': 'O maestro — visão e passes curtos e longos.',
+  'Muralha (defensivo)': 'Intransponível — marcação, posicionamento e força.',
+  'Completo': 'Equilibrado em todas as áreas do jogo.',
+};
 
 function initCreate() {
   const posChips = $('#pos-chips');
@@ -4065,6 +4372,23 @@ function initCreate() {
     posChips.appendChild(b);
   }
 
+  const styleChips = $('#style-chips');
+  styleChips.innerHTML = '';
+  for (const s of Object.keys(PLAYER_STYLES)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip' + (s === chosenStyle ? ' selected' : '');
+    b.textContent = s;
+    b.onclick = () => {
+      chosenStyle = s;
+      styleChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('selected'));
+      b.classList.add('selected');
+      $('#style-desc').textContent = STYLE_DESC[s] || '';
+    };
+    styleChips.appendChild(b);
+  }
+  $('#style-desc').textContent = STYLE_DESC[chosenStyle];
+
   $('#btn-back-start').onclick = () => showScreen('#screen-start');
 
   $('#create-form').onsubmit = (e) => {
@@ -4074,7 +4398,7 @@ function initCreate() {
     if (!first || !last) { toast('Preencha nome e sobrenome.'); return; }
     const height = parseInt($('#create-form input[name=height]').value, 10) || 175;
     const potential = parseInt($('#create-form input[name=potential]').value, 10) || 85;
-    G = newGame({ firstName: first, lastName: last, height, position: chosenPosition, potential });
+    G = newGame({ firstName: first, lastName: last, height, position: chosenPosition, potential, style: chosenStyle });
     showRollScreen();
   };
 }
@@ -4168,6 +4492,7 @@ const TABS = [
   ['transfers', '💸 Transferências'],
   ['training', '🏋️ Treino'],
   ['nation', '🌍 Seleção'],
+  ['press', '🎙️ Imprensa'],
   ['history', '📜 História'],
   ['news', '📰 Notícias'],
 ];
@@ -4179,6 +4504,7 @@ function showCareer() {
   renderTab();
   $('#btn-advance').onclick = () => doAdvance(1);
   $('#btn-advance4').onclick = () => doAdvance(4);
+  $('#btn-simseason').onclick = () => simulateSeason();
   $('#btn-save').onclick = () => { saveToStorage(G); toast('💾 Carreira salva!'); };
   $('#btn-export').onclick = exportSave;
 }
@@ -4188,7 +4514,7 @@ function renderTabs() {
   nav.innerHTML = '';
   for (const [id, label] of TABS) {
     const b = document.createElement('button');
-    b.innerHTML = label;
+    b.innerHTML = label + (id === 'press' && G.pendingInterview ? ' <span class="tab-dot"></span>' : '');
     if (id === activeTab) b.classList.add('active');
     b.onclick = () => { activeTab = id; renderTabs(); renderTab(); };
     nav.appendChild(b);
@@ -4241,7 +4567,7 @@ function renderTab() {
   const renders = {
     overview: renderOverview, stats: renderStats, tables: renderTables, calendar: renderCalendar,
     transfers: renderTransfers, training: renderTraining, nation: renderNation,
-    history: renderHistory, news: renderNews,
+    press: renderPress, history: renderHistory, news: renderNews,
   };
   el.innerHTML = '';
   renders[activeTab](el);
@@ -4708,6 +5034,79 @@ function renderNation(el) {
     </div>`;
 }
 
+// ---- Aba: imprensa (entrevistas) ----
+
+function renderPress(el) {
+  const p = G.player;
+  const iv = getInterview(G);
+  const fan = Math.round(p.fanSupport ?? 60);
+  const mgr = Math.round(p.managerTrust ?? 60);
+  const hist = G.interviewHistory || [];
+  el.innerHTML = `
+    <div class="card">
+      <h3>Relações <span class="section-tag">bastidores</span></h3>
+      <div class="kv"><span class="k">Torcida</span><span class="v">${fanFace(fan)} ${fan}/100${meter(fan, fan >= 60 ? 'var(--accent)' : fan >= 35 ? 'var(--gold)' : 'var(--red)')}</span></div>
+      <div class="kv"><span class="k">Treinador</span><span class="v">${fanFace(mgr)} ${mgr}/100${meter(mgr, mgr >= 60 ? 'var(--accent)' : mgr >= 35 ? 'var(--gold)' : 'var(--red)')}</span></div>
+      <div class="kv"><span class="k">Reputação</span><span class="v">${Math.round(p.reputation)}/100</span></div>
+    </div>
+    ${iv ? `
+    <div class="card interview-card">
+      <div class="reporter">🎙️ ${iv.reporter} — entrevista</div>
+      <h3 style="margin:6px 0 14px">"${iv.q}"</h3>
+      <div class="answers">
+        ${iv.opts.map((o, i) => `<button class="answer-btn" data-ans="${i}">${o.text}</button>`).join('')}
+      </div>
+      <button class="btn ghost small-btn" id="btn-skip-iv" style="margin-top:10px">Recusar entrevista</button>
+    </div>` : `
+    <div class="card"><div class="empty"><span class="big-emoji">🎙️</span>Nenhuma entrevista no momento. Os jornalistas aparecem conforme sua carreira ganha destaque.</div></div>`}
+    <div class="card">
+      <h3>Entrevistas recentes <span class="section-tag">${hist.length}</span></h3>
+      ${hist.length === 0 ? '<p class="faint" style="font-size:.85rem">Você ainda não deu entrevistas.</p>'
+        : hist.map((h) => `<div class="news-item"><span class="news-ico">🗞️</span><div class="news-txt"><strong>${h.headline}</strong><div class="muted" style="font-size:.82rem">"${h.quote}" — <em>${h.tone}</em></div><div class="when">${h.year} · sem ${h.week}</div></div></div>`).join('')}
+    </div>`;
+
+  el.querySelectorAll('.answer-btn').forEach((b) => {
+    b.onclick = () => {
+      const res = answerInterview(G, parseInt(b.dataset.ans, 10));
+      saveToStorage(G);
+      renderHeader();
+      renderTab();
+      if (res) showInterviewResult(res);
+    };
+  });
+  const skip = $('#btn-skip-iv');
+  if (skip) skip.onclick = () => { skipInterview(G); saveToStorage(G); renderTab(); };
+}
+
+function fanFace(v) {
+  return v >= 70 ? '😍' : v >= 50 ? '🙂' : v >= 32 ? '😐' : '😠';
+}
+
+function showInterviewResult(res) {
+  const box = $('#modal-content');
+  box.innerHTML = `
+    <div class="match-comp">📰 Repercussão</div>
+    <h3 style="margin:8px 0">${res.headline}</h3>
+    <p class="muted" style="font-size:.9rem;margin-bottom:12px">${res.article}</p>
+    <div class="reactions">
+      ${res.reactions.map((r) => `<div class="reaction"><span class="r-who">${r.who}</span> ${r.text}</div>`).join('')}
+    </div>
+    <div class="delta-row">
+      ${deltaChip('Moral', res.deltas.morale)}
+      ${deltaChip('Torcida', res.deltas.fans)}
+      ${deltaChip('Treinador', res.deltas.manager)}
+      ${deltaChip('Reputação', res.deltas.reputation)}
+    </div>`;
+  $('#modal-close').textContent = 'Ok';
+  $('#modal').hidden = false;
+}
+
+function deltaChip(label, v) {
+  if (!v) return '';
+  const pos = v > 0;
+  return `<span class="delta ${pos ? 'up' : 'down'}">${label} ${pos ? '+' : ''}${v}</span>`;
+}
+
 // ---- Aba: história ----
 
 function renderHistory(el) {
@@ -4813,8 +5212,37 @@ async function launchMatch2D() {
   }
   saveToStorage(G);
   showCareer();
-  eventQueue = events.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified', 'limitbreak'].includes(e.type));
+  eventQueue = events.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified', 'limitbreak', 'interview', 'worldcup'].includes(e.type));
   showNextEvent();
+}
+
+// Simula o resto da temporada de uma vez, sem jogar em 2D. Não abre o modal
+// de cada partida — mostra só os acontecimentos importantes ao final.
+function simulateSeason() {
+  if (!confirm('Simular o resto da temporada de uma vez? As partidas serão automáticas.')) return;
+  const startYear = G.seasonYear;
+  const important = [];
+  let guard = 0;
+  while (G.phase === 'career' && G.seasonYear === startYear && guard < 60) {
+    guard++;
+    const events = advanceWeek(G);
+    for (const e of events) {
+      if (e.type === 'match') {
+        G.matchLog = G.matchLog || [];
+        G.matchLog.push(e.report);
+        if (G.matchLog.length > 120) G.matchLog.shift();
+      } else if (['promotion', 'title', 'award', 'released', 'newSeason', 'retired', 'qualified', 'callup', 'limitbreak', 'worldcup'].includes(e.type)) {
+        important.push(e);
+      }
+    }
+  }
+  saveToStorage(G);
+  renderHeader();
+  renderTabs();
+  renderTab();
+  eventQueue = important;
+  showNextEvent();
+  if (important.length === 0) toast('Temporada simulada.');
 }
 
 function doAdvance(weeks) {
@@ -4836,8 +5264,9 @@ function doAdvance(weeks) {
   saveToStorage(G);
   btn.disabled = false; btn4.disabled = false;
   renderHeader();
+  renderTabs();
   renderTab();
-  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified'].includes(e.type));
+  eventQueue = allEvents.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified', 'interview', 'worldcup'].includes(e.type));
   showNextEvent();
 }
 
@@ -4878,7 +5307,7 @@ function showNextEvent() {
     $('#modal-close').textContent = 'Continuar ▶';
   } else {
     const gold = e.type === 'title' || e.type === 'award' || e.type === 'limitbreak';
-    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟', limitbreak: '🔥' }[e.type] || '📢';
+    const emoji = { promotion: '⬆️', offers: '💸', callup: '🌍', title: '🏆', award: '🏅', released: '📄', newSeason: '📆', retired: '👋', recovered: '💪', growth: '📈', qualified: '🌟', limitbreak: '🔥', interview: '🎙️', worldcup: '🌎' }[e.type] || '📢';
     box.innerHTML = `<div class="event-line ${gold ? 'gold-ev' : 'big'}"><span class="event-emoji">${emoji}</span>${e.text}</div>`;
     $('#modal-close').textContent = 'Ok';
   }

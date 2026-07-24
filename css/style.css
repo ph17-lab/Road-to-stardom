@@ -538,6 +538,26 @@ select.inline option, select option { background: #14213a; color: var(--text); }
   background: #000a; color: #fff; border: 1px solid #fff4; border-radius: 8px; padding: 6px 12px; font-size: .8rem; cursor: pointer; pointer-events: auto; }
 @media (min-width: 760px) { .m2d-quit { bottom: auto; top: 44px; } }
 
+/* ---------- Imprensa / entrevistas ---------- */
+.tab-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); vertical-align: middle; animation: limit-glow 1.4s ease-in-out infinite; }
+.interview-card { border: 1.5px solid var(--accent2); background: radial-gradient(400px 120px at 50% 0%, #38bdf822, transparent), linear-gradient(180deg, var(--card), #111c33); }
+.interview-card .reporter { color: var(--accent2); font-weight: 800; font-size: .82rem; text-transform: uppercase; letter-spacing: .8px; }
+.answers { display: flex; flex-direction: column; gap: 9px; }
+.answer-btn {
+  text-align: left; background: var(--bg2); border: 1.5px solid var(--border2); color: var(--text);
+  border-radius: var(--radius-sm); padding: 13px 15px; font-size: .95rem; cursor: pointer; font-family: inherit;
+  transition: all .13s ease; line-height: 1.35;
+}
+.answer-btn:hover { border-color: var(--accent2); background: #1a2b48; }
+.answer-btn:active { transform: scale(.98); }
+.reactions { display: flex; flex-direction: column; gap: 8px; text-align: left; margin: 4px 0 12px; }
+.reaction { background: var(--card2); border-radius: 9px; padding: 9px 12px; font-size: .88rem; }
+.reaction .r-who { font-weight: 800; margin-right: 4px; }
+.delta-row { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+.delta { font-size: .78rem; font-weight: 800; padding: 4px 11px; border-radius: 999px; }
+.delta.up { background: #35e08a22; color: var(--accent); border: 1px solid #35e08a55; }
+.delta.down { background: #ff5f6d22; color: var(--red); border: 1px solid #ff5f6d55; }
+
 /* botão "Jogar partida" no hub */
 .play-cta {
   display: block; width: 100%; margin-top: 8px;

@@ -19,8 +19,12 @@ Você escolhe apenas **nome e altura** — a carreira sempre começa aos **15 an
 
 ## Funcionalidades
 
-- **Criação do jogador**: nome e altura; a carreira começa sempre aos 15 anos. (O motor também suporta idade, posição, país e estilo customizados, usados pelos testes.)
-- **Base roletada**: sorteio animado da academia inicial, ponderado pela reputação — academias de elite são raras. Até 3 re-rolagens. A roleta também define posição (11 posições incl. goleiro), pé dominante, estilo de jogo e camisa.
+- **Criação do jogador**: nome, posição (11 posições incl. goleiro), estilo de jogo, potencial (define o teto da evolução) e altura — que afeta os atributos (mais alto cabeceia melhor e é mais forte; mais baixo é mais ágil). A carreira começa sempre aos 15 anos, jogador brasileiro.
+- **Base roletada**: sorteio animado da academia inicial, ponderado pela reputação — academias de elite são raras. Até 3 re-rolagens. A roleta define o clube, o pé dominante e o número da camisa.
+- **Partida jogável em 2D** (estilo FIFA Mobile): joystick + botões de toque (chute, passe, sprint, trocar jogador) e teclado no PC. Seu time é sempre **azul** e o adversário **vermelho**. Marque gols você mesmo — o resultado conta na carreira. Ocioso, seu jogador joga sozinho (IA) e você assume ao tocar.
+- **Simular temporada inteira**: botão que joga o resto do ano automaticamente, mostrando só os acontecimentos importantes.
+- **Imprensa e entrevistas**: jornalistas te entrevistam conforme sua carreira ganha destaque; cada resposta gera uma matéria e repercussão (moral, torcida, treinador, reputação) e pode agitar o mercado.
+- **Calendário de Copa do Mundo**: em anos de Copa (2026, 2030…), a Copa abre o ano e a temporada de clubes começa depois.
 - **Categorias de base**: Sub-15 / Sub-17 / Sub-20, com overall inicial compatível com a idade e a academia.
 - **Atributos completos** por grupo (ataque, passe, drible, defesa, físico, goleiro) com **overall calculado por posição**.
 - **Desenvolvimento**: potencial, idade, minutos, notas, treino com foco escolhido, qualidade da estrutura e nível da liga — com declínio físico após os 32.

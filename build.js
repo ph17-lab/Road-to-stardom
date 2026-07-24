@@ -21,6 +21,7 @@ const MODULES = [
   'src/core/development.js',
   'src/core/transfers.js',
   'src/core/competitions.js',
+  'src/core/press.js',
   'src/core/engine.js',
   'src/core/save.js',
   'src/game/match2d.js',

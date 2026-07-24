@@ -12,7 +12,8 @@ import {
   SEASON_WEEKS, MAX_REROLLS,
 } from '../src/core/engine.js';
 import { serialize, deserialize } from '../src/core/save.js';
-import { calcOverall, createAttributes, POSITIONS, trainingOptions } from '../src/core/attributes.js';
+import { calcOverall, createAttributes, applyHeightBias, POSITIONS, trainingOptions } from '../src/core/attributes.js';
+import { offerInterview, answerInterview, getInterview } from '../src/core/press.js';
 import { tableStandings } from '../src/core/world.js';
 import { avgRating } from '../src/core/player.js';
 
@@ -446,6 +447,49 @@ test('lesão impede jogar a partida em 2D', () => {
   confirmAcademy(G);
   G.player.injury = { weeks: 3, desc: 'Lesão moderada', severity: 'moderada' };
   assert.equal(getPlayableMatch(G), null, 'lesionado não tem jogo jogável');
+});
+
+test('altura afeta atributos: mais alto cabeceia melhor, mais baixo é mais ágil', () => {
+  const tall = createAttributes('ST', 70, 'Completo', 198);
+  const short = createAttributes('ST', 70, 'Completo', 165);
+  assert.ok(tall.heading > short.heading, `alto (${tall.heading}) deve cabecear melhor que baixo (${short.heading})`);
+  assert.ok(short.agility > tall.agility, `baixo (${short.agility}) deve ser mais ágil que alto (${tall.agility})`);
+  // aplicar o viés diretamente também funciona
+  const base = { heading: 60, agility: 60, strength: 60, acceleration: 60, balance: 60 };
+  const t = applyHeightBias({ ...base }, 200);
+  assert.ok(t.heading > 60 && t.agility < 60);
+});
+
+test('sistema de entrevistas: gera matéria e aplica repercussão', () => {
+  const G = makeGame({ seed: 44, position: 'ST' });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  const iv = offerInterview(G);
+  assert.ok(iv && iv.opts.length >= 2, 'deve gerar uma entrevista com opções');
+  assert.equal(getInterview(G), iv);
+  const fansBefore = G.player.fanSupport;
+  const newsBefore = G.news.length;
+  const res = answerInterview(G, 0);
+  assert.ok(res && res.headline && res.reactions.length > 0, 'gera manchete e reações');
+  assert.equal(G.pendingInterview, null, 'entrevista some após responder');
+  assert.ok(G.news.length > newsBefore, 'vira notícia');
+  assert.ok(G.interviewHistory.length === 1, 'entra no histórico');
+  assert.ok(typeof G.player.fanSupport === 'number' && G.player.fanSupport !== fansBefore || res.deltas.fans === 0);
+});
+
+test('ano de Copa do Mundo: a Copa é disputada no início do ano (2026)', () => {
+  const G = makeGame({ seed: 8, position: 'ST' });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  assert.equal(G.seasonYear, 2026);
+  assert.equal(G.seasonYear % 4, 2, '2026 é ano de Copa');
+  let sawWorldCup = false;
+  for (let w = 0; w < 8; w++) {
+    const events = advanceWeek(G);
+    if (events.some((e) => e.type === 'worldcup')) sawWorldCup = true;
+  }
+  assert.ok(sawWorldCup, 'a Copa do Mundo deve abrir o ano');
+  assert.equal(G.wcPlayedYear, 2026, 'marca a Copa como já disputada no ano');
 });
 
 test('save e load preservam o estado', () => {

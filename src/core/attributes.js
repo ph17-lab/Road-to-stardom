@@ -95,8 +95,6 @@ export function createAttributes(position, targetOvr, styleName = 'Completo', he
     for (const k of keys) {
       let v = gauss(groupBase, 4);
       if (style.boost.includes(k)) v += 5;
-      if (k === 'heading') v += (height - 178) * 0.25;
-      if (k === 'agility' || k === 'balance') v -= (height - 178) * 0.2;
       attrs[k] = clamp(Math.round(v), 1, 99);
     }
   }
@@ -112,6 +110,20 @@ export function createAttributes(position, targetOvr, styleName = 'Completo', he
         attrs[k] = clamp(attrs[k] + step, 1, 99);
       }
     }
+  }
+
+  // Efeito da altura (aplicado por último para não ser diluído pelo ajuste):
+  // mais alto = mais cabeceio e força; mais baixo = mais ágil e acelerado.
+  applyHeightBias(attrs, height);
+  return attrs;
+}
+
+// Viés físico conforme a altura (referência 178 cm).
+export function applyHeightBias(attrs, height) {
+  const d = height - 178;
+  const bias = { heading: d * 0.55, strength: d * 0.38, jumping: d * 0.5, agility: -d * 0.45, acceleration: -d * 0.22, balance: -d * 0.28 };
+  for (const [k, adj] of Object.entries(bias)) {
+    if (attrs[k] != null) attrs[k] = clamp(Math.round(attrs[k] + adj), 1, 99);
   }
   return attrs;
 }
