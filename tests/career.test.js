@@ -8,6 +8,7 @@ import {
   newGame, doRollAcademy, confirmAcademy, advanceWeek, acceptOffer,
   setTrainingFocus, careerTotals, nextFixture, retirePlayer, spendStatPoint,
   spendStatPoints, spendableAttrs, canLimitBreak, doLimitBreak,
+  getPlayableMatch,
   SEASON_WEEKS, MAX_REROLLS,
 } from '../src/core/engine.js';
 import { serialize, deserialize } from '../src/core/save.js';
@@ -414,6 +415,37 @@ test('classificação continental vem da posição na tabela da temporada anteri
   // quem terminou no meio da tabela europeia não entra
   const mid = eng.lastStandings[10];
   assert.ok(!ucl.teams.includes(mid), 'clube de meio de tabela não deve ir para a Champions');
+});
+
+test('partida jogada em 2D: há jogo jogável e o resultado conta na carreira', () => {
+  const G = makeGame({ seed: 88, position: 'ST' });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  // na base há jogo jogável na semana
+  const playable = getPlayableMatch(G);
+  assert.ok(playable, 'deve haver uma partida jogável');
+  assert.ok(playable.kind === 'youth' || playable.kind === 'league');
+  assert.ok(playable.ownName && playable.oppName && playable.ownColor);
+
+  // injeta um resultado jogado (2 gols, 1 assist, vitória 3-1)
+  const before = G.player.seasonStats.goals;
+  const events = advanceWeek(G, { play: { teamGoals: 3, oppGoals: 1, playerGoals: 2, playerAssists: 1, playerShots: 5, oppClubId: playable.oppClubId } });
+  const matchEv = events.find((e) => e.type === 'match');
+  assert.ok(matchEv, 'deve gerar um evento de partida');
+  assert.equal(G.player.seasonStats.goals, before + 2, 'gols marcados na partida jogada contam');
+  assert.equal(G.player.seasonStats.assists, 1);
+  assert.equal(G.player.seasonStats.apps, 1);
+  assert.equal(matchEv.report.teamGoals, 3);
+  assert.equal(matchEv.report.oppGoals, 1);
+  assert.ok(matchEv.report.stats.rating > 6, 'boa atuação gera nota alta');
+});
+
+test('lesão impede jogar a partida em 2D', () => {
+  const G = makeGame({ seed: 90, position: 'ST' });
+  doRollAcademy(G);
+  confirmAcademy(G);
+  G.player.injury = { weeks: 3, desc: 'Lesão moderada', severity: 'moderada' };
+  assert.equal(getPlayableMatch(G), null, 'lesionado não tem jogo jogável');
 });
 
 test('save e load preservam o estado', () => {

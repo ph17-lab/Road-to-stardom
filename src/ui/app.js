@@ -5,7 +5,9 @@ import {
   negotiate, setTrainingFocus, retirePlayer, careerTotals, nextFixture,
   playerClub, playerLeague, avgRating, fullName, tableStandings,
   spendStatPoints, spendableAttrs, canLimitBreak, doLimitBreak,
+  getPlayableMatch,
 } from '../core/engine.js';
+import { playMatch2D } from '../game/match2d.js';
 import { saveToStorage, loadFromStorage, clearStorage, serialize, deserialize } from '../core/save.js';
 import { POSITION_NAMES, ATTR_GROUPS, ATTR_NAMES, trainingOptions } from '../core/attributes.js';
 import { callupThreshold, isCalledUp, roundName, slotsForLeague } from '../core/competitions.js';
@@ -341,11 +343,12 @@ function renderOverview(el) {
       </div>
       <div class="card">
         <h3>Próximo jogo <span class="section-tag">agenda</span></h3>
-        <div style="text-align:center;padding:8px 0 14px">
+        <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:1.4rem;font-weight:900">${fx ? fx.desc : '—'}</div>
           <div class="muted" style="font-size:.85rem;margin-top:2px">${fx ? fx.comp : ''}</div>
         </div>
-        <h4 class="faint" style="text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Temporada ${G.seasonYear}</h4>
+        ${getPlayableMatch(G) ? '<button class="play-cta" id="btn-play2d">🎮 Jogar em 2D</button>' : (p.injury ? '<p class="faint" style="text-align:center;font-size:.8rem">🤕 Lesionado — sem jogos.</p>' : '')}
+        <h4 class="faint" style="text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Temporada ${G.seasonYear}</h4>
         <div class="tiles">
           <div class="tile"><div class="t-val">${s.apps}</div><div class="t-label">Jogos</div></div>
           <div class="tile green"><div class="t-val">${s.goals}</div><div class="t-label">Gols</div></div>
@@ -369,6 +372,9 @@ function renderOverview(el) {
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  const playBtn = $('#btn-play2d');
+  if (playBtn) playBtn.onclick = () => launchMatch2D();
 
   const picker = $('#step-picker');
   if (picker) {
@@ -814,6 +820,59 @@ function emptyState(emoji, text) {
 }
 
 // ---------------- Avançar semana + eventos ----------------
+
+// Lança a partida jogável em 2D e injeta o resultado na semana da carreira.
+async function launchMatch2D() {
+  const m = getPlayableMatch(G);
+  if (!m) { toast('Sem jogo para disputar esta semana.'); return; }
+  const p = G.player;
+  const scr = $('#screen-match2d');
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  scr.classList.add('active');
+
+  const config = {
+    player: { name: fullName(p), attrs: p.attrs, position: p.position, shirt: p.shirt },
+    own: { name: m.ownName, color: m.ownColor },
+    opp: { name: m.oppName, color: m.oppColor, str: m.oppStr },
+    teamStr: m.teamStr,
+    comp: m.comp,
+    stadium: m.stadium,
+    isHome: m.isHome,
+  };
+
+  let outcome;
+  try {
+    outcome = await playMatch2D(scr, config);
+  } catch (err) {
+    outcome = null;
+  }
+  scr.classList.remove('active');
+  scr.innerHTML = '';
+
+  if (!outcome) { showCareer(); return; }
+
+  // injeta o resultado jogado na próxima partida da semana
+  const events = advanceWeek(G, { play: {
+    teamGoals: outcome.teamGoals,
+    oppGoals: outcome.oppGoals,
+    playerGoals: outcome.playerGoals,
+    playerAssists: outcome.playerAssists,
+    playerShots: outcome.playerShots,
+    saves: outcome.saves,
+    oppClubId: m.oppClubId,
+  } });
+  for (const e of events) {
+    if (e.type === 'match') {
+      G.matchLog = G.matchLog || [];
+      G.matchLog.push(e.report);
+      if (G.matchLog.length > 120) G.matchLog.shift();
+    }
+  }
+  saveToStorage(G);
+  showCareer();
+  eventQueue = events.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified', 'limitbreak'].includes(e.type));
+  showNextEvent();
+}
 
 function doAdvance(weeks) {
   const btn = $('#btn-advance');

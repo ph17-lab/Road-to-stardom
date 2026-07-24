@@ -496,6 +496,66 @@ select.inline option, select option { background: #14213a; color: var(--text); }
 .event-line.gold-ev { border: 1.5px solid var(--gold); background: linear-gradient(180deg, #ffcb3d18, var(--card2)); color: var(--gold); font-weight: 800; }
 .event-emoji { font-size: 2.6rem; display: block; margin-bottom: 8px; }
 
+/* ---------- Partida 2D (arcade) ---------- */
+#screen-match2d { position: fixed; inset: 0; z-index: 60; background: #06110a; display: none; }
+#screen-match2d.active { display: block; }
+.m2d-wrap { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.m2d-wrap canvas { position: absolute; inset: 0; display: block; }
+.m2d-hud {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  padding: 8px calc(10px + env(safe-area-inset-right)) 8px calc(10px + env(safe-area-inset-left));
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  background: linear-gradient(180deg, #000a, transparent);
+  pointer-events: none;
+}
+.m2d-score { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.05rem; }
+.m2d-team { letter-spacing: .5px; }
+.m2d-goals { background: #000a; border-radius: 8px; padding: 3px 12px; font-size: 1.2rem; }
+.m2d-clock { position: absolute; right: 12px; top: 8px; background: #000a; border-radius: 8px; padding: 3px 10px; font-weight: 800; font-size: .95rem; }
+.m2d-comp { position: absolute; left: 12px; top: 10px; font-size: .7rem; color: var(--muted); max-width: 40vw; }
+.m2d-flash {
+  position: absolute; top: 34%; left: 0; right: 0; z-index: 4; text-align: center;
+  font-size: clamp(2rem, 11vw, 4rem); font-weight: 900; letter-spacing: 1px;
+  text-shadow: 0 4px 20px #000, 0 0 30px #000; opacity: 0; transition: opacity .2s ease;
+  pointer-events: none;
+}
+.m2d-flash.show { opacity: 1; animation: m2d-pop .4s ease; }
+@keyframes m2d-pop { from { transform: scale(.6); } to { transform: scale(1); } }
+.m2d-controls { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.m2d-joy {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 116px; height: 116px; border-radius: 50%;
+  background: radial-gradient(circle, #ffffff1c, #ffffff0a); border: 2px solid #ffffff33;
+  pointer-events: auto; touch-action: none;
+}
+.m2d-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #cfe); box-shadow: 0 4px 10px #0008; }
+.m2d-buttons { position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 150px; height: 150px; pointer-events: none; }
+.m2d-btn {
+  position: absolute; width: 60px; height: 60px; border-radius: 50%; border: none;
+  font-size: 1.5rem; font-weight: 900; color: #06130b; cursor: pointer; pointer-events: auto;
+  box-shadow: 0 5px 14px #0007; font-family: inherit; touch-action: none;
+}
+.m2d-btn:active { transform: scale(.9); }
+.m2d-shoot { right: 4px; top: 42px; background: linear-gradient(135deg, #ff8a3d, #ff5f4d); color: #2a0d00; font-size: 1.7rem; }
+.m2d-shoot.def { background: linear-gradient(135deg, #ff5f6d, #d63a6a); color: #fff; }
+.m2d-pass { right: 76px; top: 70px; background: linear-gradient(135deg, #35e08a, #23c46f); font-size: 1.7rem; }
+.m2d-sprint { right: 40px; top: 4px; width: 50px; height: 50px; background: linear-gradient(135deg, #38bdf8, #2b8fd6); color: #04121f; font-size: 1.3rem; }
+.m2d-switch { right: 92px; top: 8px; width: 44px; height: 44px; background: #ffffff22; color: #fff; border: 1px solid #fff5; font-size: 1.1rem; box-shadow: none; }
+.m2d-quit { position: absolute; right: 10px; bottom: calc(184px + env(safe-area-inset-bottom)); z-index: 4;
+  background: #000a; color: #fff; border: 1px solid #fff4; border-radius: 8px; padding: 6px 12px; font-size: .8rem; cursor: pointer; pointer-events: auto; }
+@media (min-width: 760px) { .m2d-quit { bottom: auto; top: 44px; } }
+
+/* botão "Jogar partida" no hub */
+.play-cta {
+  display: block; width: 100%; margin-top: 8px;
+  background: linear-gradient(135deg, #ff8a3d, #ff5f4d); color: #2a0d00;
+  border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 1.05rem; font-weight: 900;
+  cursor: pointer; font-family: inherit; box-shadow: 0 8px 20px -8px #ff5f4d99;
+}
+.play-cta:active { transform: scale(.98); }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-8px);
@@ -644,6 +704,9 @@ select.inline option, select option { background: #14213a; color: var(--text); }
       </div>
     </section>
   </div>
+
+  <!-- Tela da partida 2D jogável -->
+  <div id="screen-match2d"></div>
 
   <!-- Modal de eventos (resultado de partida etc.) -->
   <div id="modal" class="modal" hidden>
@@ -2339,15 +2402,55 @@ function applyStats(G, stats, comp) {
 
 // ---------------- Partidas do jogador ----------------
 
-function playPlayerMatch(G, homeId, awayId, comp, compLabel) {
+// Monta um objeto de estatísticas a partir de uma partida JOGADA em 2D.
+// Os gols/assistências do jogador e o placar vêm do minigame; o resto é
+// derivado de forma plausível, e a nota é calculada como na simulação.
+function buildPlayedStats(G, o) {
+  const p = G.player;
+  const won = o.teamGoals > o.oppGoals;
+  const lost = o.teamGoals < o.oppGoals;
+  const goals = o.playerGoals || 0;
+  const assists = o.playerAssists || 0;
+  if (p.position === 'GK') {
+    const saves = o.saves != null ? o.saves : clamp(Math.round(gauss(3, 1.5)), 0, 10);
+    const cleanSheet = o.oppGoals === 0;
+    let r = 6.1 + saves * 0.22 - o.oppGoals * 0.5 + (won ? 0.3 : lost ? -0.25 : 0) + (cleanSheet ? 0.7 : 0);
+    return {
+      minutes: 90, goals, assists, shots: 0, shotsOnTarget: 0,
+      passes: ri(18, 30), passAcc: ri(70, 92), tackles: 0, interceptions: 0, dribbles: 0,
+      saves, cleanSheet, yellow: false, red: false,
+      rating: clamp(Math.round(r * 10) / 10, 4, 10), motm: false,
+    };
+  }
+  const shots = Math.max(goals, o.playerShots != null ? o.playerShots : Math.round(goals * 1.5 + ri(1, 4)));
+  const shotsOnTarget = Math.max(goals, Math.round(shots * 0.6));
+  const passBase = { CB: 45, RB: 40, LB: 40, CDM: 55, CM: 58, CAM: 48, RW: 32, LW: 32, CF: 30, ST: 26 }[p.position] || 38;
+  let r = 6.3 + goals * 1.05 + assists * 0.65 + shotsOnTarget * 0.05
+    + (won ? 0.3 : lost ? -0.35 : 0) + gauss(0, 0.2);
+  const rating = clamp(Math.round(r * 10) / 10, 4, 10);
+  return {
+    minutes: 90, goals, assists, shots, shotsOnTarget,
+    passes: Math.round(gauss(passBase, 8)), passAcc: clamp(Math.round(gauss(84, 5)), 55, 97),
+    tackles: ri(0, 3), interceptions: ri(0, 3), dribbles: ri(0, 6),
+    saves: 0, cleanSheet: false, yellow: chance(0.08), red: false,
+    rating, motm: rating >= 8.6,
+  };
+}
+
+function playPlayerMatch(G, homeId, awayId, comp, compLabel, override = null) {
   const p = G.player;
   const isHome = homeId === p.clubId;
   const own = G.clubs[p.clubId];
   const opp = G.clubs[isHome ? awayId : homeId];
-  const result = simPlayerMatch({
-    position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
-    role: p.squadRole, teamStr: teamStrength(own), oppStr: teamStrength(opp), isHome,
-  });
+  let result;
+  if (override) {
+    result = { gh: override.teamGoals, ga: override.oppGoals, stats: buildPlayedStats(G, override) };
+  } else {
+    result = simPlayerMatch({
+      position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
+      role: p.squadRole, teamStr: teamStrength(own), oppStr: teamStrength(opp), isHome,
+    });
+  }
   const teamGoals = result.gh;
   const oppGoals = result.ga;
   const won = teamGoals > oppGoals;
@@ -2382,17 +2485,20 @@ function playPlayerMatch(G, homeId, awayId, comp, compLabel) {
   };
 }
 
-function playYouthMatch(G) {
+function playYouthMatch(G, override = null) {
   const p = G.player;
   const own = G.clubs[p.clubId];
-  const others = G.clubs.filter((c) => c.country === own.country && c.id !== own.id);
-  const oppClub = choice(others);
+  const oppClub = override && override.oppClubId != null
+    ? G.clubs[override.oppClubId]
+    : choice(G.clubs.filter((c) => c.country === own.country && c.id !== own.id));
   const teamStr = 48 + own.academy * 2 + gauss(0, 2);
   const oppStr = 48 + oppClub.academy * 2 + gauss(0, 2);
-  const result = simPlayerMatch({
-    position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
-    role: 'starter', teamStr, oppStr, isHome: chance(0.5),
-  });
+  const result = override
+    ? { gh: override.teamGoals, ga: override.oppGoals, stats: buildPlayedStats(G, override) }
+    : simPlayerMatch({
+      position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
+      role: 'starter', teamStr, oppStr, isHome: chance(0.5),
+    });
   const won = result.gh > result.ga;
   const lost = result.gh < result.ga;
   if (result.stats) {
@@ -2462,10 +2568,12 @@ function quickMatch(G, league, homeId, awayId) {
 
 // ---------------- Semana ----------------
 
-function advanceWeek(G) {
+function advanceWeek(G, opts = {}) {
   if (G.phase !== 'career') return [];
   const events = [];
   const p = G.player;
+  // resultado de uma partida JOGADA em 2D (usado uma única vez)
+  let pendingPlay = opts.play || null;
 
   // recuperação de lesão
   if (p.injury) {
@@ -2489,7 +2597,8 @@ function advanceWeek(G) {
     for (const [homeId, awayId] of roundFixtures) {
       const isPlayerMatch = isPlayerLeague && (homeId === p.clubId || awayId === p.clubId);
       if (isPlayerMatch && !p.injury) {
-        const report = playPlayerMatch(G, homeId, awayId, 'league', league.name);
+        const override = pendingPlay; pendingPlay = null;
+        const report = playPlayerMatch(G, homeId, awayId, 'league', league.name, override);
         events.push({ type: 'match', report });
         updateTable(league.table, homeId, awayId, report.gh, report.ga);
         weekMinutes += report.stats ? report.stats.minutes : 0;
@@ -2505,7 +2614,8 @@ function advanceWeek(G) {
   if (p.youth && G.week <= YOUTH_ROUNDS) {
     possible += 90;
     if (!p.injury) {
-      const report = playYouthMatch(G);
+      const override = pendingPlay; pendingPlay = null;
+      const report = playYouthMatch(G, override);
       events.push({ type: 'match', report });
       weekMinutes += report.stats ? report.stats.minutes : 0;
     }
@@ -3061,6 +3171,64 @@ function nextFixture(G) {
   return { comp: 'Sem jogos esta semana', desc: 'Treinamento' };
 }
 
+/**
+ * Contexto da partida jogável desta semana (para o modo 2D), ou null.
+ * Só a partida principal (liga do profissional ou jogo da base) é jogável;
+ * copas/continentais/seleção da mesma semana continuam sendo simuladas.
+ */
+function getPlayableMatch(G) {
+  const p = G.player;
+  if (G.phase !== 'career' || p.injury) return null;
+  const club = playerClub(G);
+  if (!club) return null;
+
+  if (p.youth) {
+    if (G.week > YOUTH_ROUNDS) return null;
+    const others = G.clubs.filter((c) => c.country === club.country && c.id !== club.id);
+    const oppClub = others[Math.floor(getSeed() % others.length + G.week) % others.length] || others[0];
+    return {
+      kind: 'youth',
+      isHome: true,
+      ownName: `${club.name} ${p.category}`,
+      oppName: `${oppClub.name} ${p.category}`,
+      oppClubId: oppClub.id,
+      comp: `Campeonato ${p.category}`,
+      stadium: `CT ${club.name}`,
+      teamStr: 48 + club.academy * 2,
+      oppStr: 48 + oppClub.academy * 2,
+      ownColor: teamColor(club.name),
+      oppColor: teamColor(oppClub.name),
+    };
+  }
+
+  const league = playerLeague(G);
+  if (!league || league.round >= league.fixtures.length) return null;
+  const fixture = league.fixtures[league.round].find(([h, a]) => h === p.clubId || a === p.clubId);
+  if (!fixture) return null;
+  const isHome = fixture[0] === p.clubId;
+  const opp = G.clubs[isHome ? fixture[1] : fixture[0]];
+  return {
+    kind: 'league',
+    isHome,
+    ownName: club.name,
+    oppName: opp.name,
+    comp: league.name,
+    stadium: (isHome ? club : opp).stadium,
+    teamStr: teamStrength(club),
+    oppStr: teamStrength(opp),
+    ownColor: teamColor(club.name),
+    oppColor: teamColor(opp.name),
+  };
+}
+
+// Cor do kit derivada do nome do clube (determinística, só estética no 2D)
+function teamColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue}, 65%, 52%)`;
+}
+
 
 // ==== src/core/save.js ====
 // Salvamento da carreira: serialização do estado completo + semente do RNG.
@@ -3117,8 +3285,671 @@ function clearStorage(storage = defaultStorage()) {
   } catch { /* sem armazenamento disponível */ }
 }
 
+// ==== src/game/match2d.js ====
+// Partida jogável em 2D (arcade, estilo FIFA Mobile).
+// playMatch2D(container, config) monta canvas + HUD + controles dentro do
+// container e devolve uma Promise com o resultado:
+//   { teamGoals, oppGoals, playerGoals, playerAssists, playerShots }
+//
+// Sem dependências externas; todo o estado vive em variáveis locais.
+
+const M2D_FW = 68;   // largura do campo (unidades)
+const M2D_FH = 105;  // comprimento do campo
+const M2D_GOAL_W = 14; // largura do gol
+const M2D_MATCH_SECONDS = 150; // duração real (mapeia para 90')
+const M2D_PLAYER_R = 1.5;
+const M2D_BALL_R = 0.7;
+
+function m2dClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+// formação base (frações do campo) — 5 de linha + goleiro. Own ataca para cima.
+const M2D_OWN_FORM = [
+  { x: 0.50, y: 0.94, gk: true, role: 'GK' },
+  { x: 0.28, y: 0.72, role: 'DEF' },
+  { x: 0.72, y: 0.72, role: 'DEF' },
+  { x: 0.50, y: 0.56, role: 'MID' },
+  { x: 0.34, y: 0.38, role: 'FWD' },
+  { x: 0.66, y: 0.38, role: 'FWD' },
+];
+
+// papel do "astro" (jogador do usuário) conforme a posição de carreira
+function m2dStarSlot(position) {
+  if (position === 'GK') return 0;
+  if (['CB', 'RB', 'LB'].includes(position)) return 1;
+  if (['CDM', 'CM'].includes(position)) return 3;
+  return 4; // atacantes e meias ofensivos
+}
+
+function m2dHue(hsl) {
+  const m = /hsl\((\d+)/.exec(hsl || '');
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function playMatch2D(container, config) {
+  return new Promise((resolve) => {
+    // garante contraste entre os kits (o hash pode gerar tons próximos)
+    const oh = m2dHue(config.own.color), ph = m2dHue(config.opp.color);
+    let diff = Math.abs(oh - ph); diff = Math.min(diff, 360 - diff);
+    if (diff < 45) config.opp = { ...config.opp, color: `hsl(${(oh + 165) % 360}, 68%, 55%)` };
+
+    // ---------- DOM ----------
+    container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'm2d-wrap';
+    wrap.innerHTML = `
+      <div class="m2d-hud">
+        <div class="m2d-score">
+          <span class="m2d-team" style="color:${config.own.color}">${abbr(config.own.name)}</span>
+          <span class="m2d-goals" id="m2d-goals">0 - 0</span>
+          <span class="m2d-team" style="color:${config.opp.color}">${abbr(config.opp.name)}</span>
+        </div>
+        <div class="m2d-clock" id="m2d-clock">0'</div>
+        <div class="m2d-comp">${config.comp}</div>
+      </div>
+      <canvas id="m2d-canvas"></canvas>
+      <div class="m2d-flash" id="m2d-flash"></div>
+      <div class="m2d-controls">
+        <div class="m2d-joy" id="m2d-joy"><div class="m2d-knob" id="m2d-knob"></div></div>
+        <div class="m2d-buttons">
+          <button class="m2d-btn m2d-sprint" id="m2d-sprint">⚡</button>
+          <button class="m2d-btn m2d-pass" id="m2d-pass">A</button>
+          <button class="m2d-btn m2d-shoot" id="m2d-shoot">B</button>
+          <button class="m2d-btn m2d-switch" id="m2d-switch">⇄</button>
+        </div>
+      </div>
+      <button class="m2d-quit" id="m2d-quit">Sair</button>`;
+    container.appendChild(wrap);
+
+    const canvas = wrap.querySelector('#m2d-canvas');
+    const ctx = canvas.getContext('2d');
+    const goalsEl = wrap.querySelector('#m2d-goals');
+    const clockEl = wrap.querySelector('#m2d-clock');
+    const flashEl = wrap.querySelector('#m2d-flash');
+    const passBtn = wrap.querySelector('#m2d-pass');
+    const shootBtn = wrap.querySelector('#m2d-shoot');
+
+    let cw = 0, ch = 0, scale = 1, offX = 0, offY = 0, dpr = 1;
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      cw = rect.width; ch = rect.height;
+      canvas.width = Math.round(cw * dpr);
+      canvas.height = Math.round(ch * dpr);
+      canvas.style.width = cw + 'px';
+      canvas.style.height = ch + 'px';
+      const pad = 8;
+      scale = Math.min((cw - pad * 2) / M2D_FW, (ch - pad * 2) / M2D_FH);
+      offX = (cw - M2D_FW * scale) / 2;
+      offY = (ch - M2D_FH * scale) / 2;
+    }
+    const sx = (x) => offX + x * scale;
+    const sy = (y) => offY + y * scale;
+
+    // ---------- Estado ----------
+    const P = config.player;
+    const starIdx = m2dStarSlot(P.position);
+    const teamSkill = m2dClamp(config.teamStr, 40, 99);
+    const oppSkill = m2dClamp(config.opp.str, 40, 99);
+
+    function mkPlayers(form, team, skill, mirror, color) {
+      return form.map((f, i) => {
+        const isStar = team === 'own' && i === starIdx;
+        const fx = f.x * M2D_FW;
+        const fy = (mirror ? 1 - f.y : f.y) * M2D_FH;
+        // atributos efetivos (0-100) do jogador
+        let atk = skill, pace = skill, drib = skill, pass = skill, tackle = skill, fin = skill;
+        if (isStar) {
+          const a = P.attrs;
+          pace = (a.pace + a.acceleration) / 2;
+          drib = (a.dribbling + a.ballControl) / 2;
+          pass = (a.shortPass + a.vision) / 2;
+          tackle = (a.tackling + a.interceptions) / 2;
+          fin = (a.finishing + a.positioning) / 2;
+          atk = fin;
+        }
+        return {
+          id: `${team}${i}`, team, i, role: f.role, gk: !!f.gk, isStar,
+          x: fx, y: fy, vx: 0, vy: 0, hx: fx, hy: fy, // home position
+          color, num: isStar ? P.shirt : (f.gk ? 1 : i + 1),
+          atk, pace, drib, pass, tackle, fin,
+        };
+      });
+    }
+    const own = mkPlayers(M2D_OWN_FORM, 'own', teamSkill, false, config.own.color);
+    const opp = mkPlayers(M2D_OWN_FORM, 'opp', oppSkill, true, config.opp.color);
+    const players = own.concat(opp);
+    const ball = { x: M2D_FW / 2, y: M2D_FH / 2, vx: 0, vy: 0, owner: null, kickCd: 0, lastOwnerTeam: null };
+
+    let userId = own[starIdx].id;
+    let scoreOwn = 0, scoreOpp = 0;
+    let playerGoals = 0, playerAssists = 0, playerShots = 0;
+    let clock = 0; // minutos 0..90
+    let real = 0;  // segundos reais
+    let running = true, finished = false;
+    let flashUntil = 0, kickoffFreeze = 0, halftimeShown = false;
+    let assistPending = null; // { receiver, until } pass do humano
+
+    // ---------- Input ----------
+    const input = { mvx: 0, mvy: 0, sprint: false };
+    const keys = {};
+    let joyId = null, joyCx = 0, joyCy = 0;
+    const joy = wrap.querySelector('#m2d-joy');
+    const knob = wrap.querySelector('#m2d-knob');
+    const JOY_R = 46;
+
+    joy.addEventListener('pointerdown', (e) => {
+      joyId = e.pointerId;
+      const r = joy.getBoundingClientRect();
+      joyCx = r.left + r.width / 2; joyCy = r.top + r.height / 2;
+      moveJoy(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+    window.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) moveJoy(e.clientX, e.clientY); });
+    window.addEventListener('pointerup', (e) => { if (e.pointerId === joyId) { joyId = null; input.mvx = 0; input.mvy = 0; knob.style.transform = 'translate(0,0)'; } });
+    function moveJoy(cx, cy) {
+      let dx = cx - joyCx, dy = cy - joyCy;
+      const d = Math.hypot(dx, dy) || 1;
+      const cl = Math.min(d, JOY_R);
+      const kx = dx / d * cl, ky = dy / d * cl;
+      knob.style.transform = `translate(${kx}px, ${ky}px)`;
+      input.mvx = dx / d * Math.min(1, d / JOY_R);
+      input.mvy = dy / d * Math.min(1, d / JOY_R);
+    }
+
+    const btn = (id, on, off) => {
+      const el = wrap.querySelector('#' + id);
+      el.addEventListener('pointerdown', (e) => { e.preventDefault(); on(); });
+      if (off) el.addEventListener('pointerup', (e) => { e.preventDefault(); off(); });
+    };
+    btn('m2d-shoot', () => doShoot());
+    btn('m2d-pass', () => doPass());
+    btn('m2d-sprint', () => { input.sprint = true; }, () => { input.sprint = false; });
+    btn('m2d-switch', () => switchPlayer());
+    wrap.querySelector('#m2d-quit').addEventListener('click', () => finish());
+
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    function onKey(e) {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === ' ') { doShoot(); e.preventDefault(); }
+      if (e.key.toLowerCase() === 'j') doPass();
+      if (e.key.toLowerCase() === 'e') switchPlayer();
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+    }
+    function onKeyUp(e) { keys[e.key.toLowerCase()] = false; }
+    function keyVec() {
+      let x = 0, y = 0;
+      if (keys['a'] || keys['arrowleft']) x -= 1;
+      if (keys['d'] || keys['arrowright']) x += 1;
+      if (keys['w'] || keys['arrowup']) y -= 1;
+      if (keys['s'] || keys['arrowdown']) y += 1;
+      const d = Math.hypot(x, y);
+      return d ? { x: x / d, y: y / d, sprint: keys['shift'] } : null;
+    }
+
+    function userPlayer() { return players.find((p) => p.id === userId); }
+    function ownOutfield() { return own.filter((p) => !p.gk); }
+
+    function switchPlayer() {
+      const list = ownOutfield();
+      const cur = list.findIndex((p) => p.id === userId);
+      // troca para o companheiro mais próximo da bola
+      const sorted = list.slice().sort((a, b) => dist2(a, ball) - dist2(b, ball));
+      const next = sorted.find((p) => p.id !== userId) || list[(cur + 1) % list.length];
+      userId = next.id;
+    }
+
+    // ---------- Física / ações ----------
+    function dist2(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; }
+    function dist(a, b) { return Math.sqrt(dist2(a, b)); }
+
+    function doShoot() {
+      const u = userPlayer();
+      if (ball.owner !== u.id || u.gk) return;
+      const goalY = 0; // gol adversário no topo
+      const tx = M2D_FW / 2 + (Math.random() - 0.5) * (M2D_GOAL_W - 3);
+      let dx = tx - u.x, dy = goalY - u.y;
+      const d = Math.hypot(dx, dy) || 1;
+      // mira imperfeita conforme finalização e distância
+      const acc = m2dClamp(u.fin / 100, 0.3, 1.2);
+      const spread = (1 - acc) * 0.22 + Math.min(0.16, d / M2D_FH * 0.2);
+      const ang = Math.atan2(dy, dx) + (Math.random() - 0.5) * spread;
+      const power = 52 + u.fin / 100 * 22;
+      ball.vx = Math.cos(ang) * power;
+      ball.vy = Math.sin(ang) * power;
+      ball.owner = null; ball.kickCd = 0.25; ball.lastOwnerTeam = 'own';
+      playerShots++;
+      lastShot = { by: u.id, human: true, team: 'own' };
+      assistPending = null;
+    }
+
+    function doPass(auto) {
+      const u = auto || userPlayer();
+      if (ball.owner !== u.id) return;
+      // melhor companheiro à frente
+      const mates = (u.team === 'own' ? own : opp).filter((m) => m.id !== u.id && !m.gk);
+      const fwd = u.team === 'own' ? -1 : 1; // own ataca para cima
+      let best = null, bestScore = -Infinity;
+      for (const m of mates) {
+        const ahead = (m.y - u.y) * fwd; // positivo = mais à frente
+        const d = dist(u, m);
+        const score = ahead * 1.5 - d * 0.5 - nearestOppDist(m) * -0.3;
+        if (score > bestScore) { bestScore = score; best = m; }
+      }
+      if (!best) return;
+      let dx = best.x - u.x, dy = best.y - u.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const power = m2dClamp(d * 1.7, 22, 46);
+      ball.vx = dx / d * power; ball.vy = dy / d * power;
+      ball.owner = null; ball.kickCd = 0.18; ball.lastOwnerTeam = u.team;
+      if (u.team === 'own' && u.id === userId) assistPending = { receiver: best.id, until: real + 4 };
+      else assistPending = null;
+      lastShot = null;
+    }
+
+    let lastShot = null;
+
+    function tryPossession() {
+      if (ball.owner || ball.kickCd > 0) return;
+      let closest = null, cd = Infinity;
+      for (const p of players) {
+        const d = dist2(p, ball);
+        if (d < cd) { cd = d; closest = p; }
+      }
+      const ctrl = (M2D_PLAYER_R + M2D_BALL_R + 0.8);
+      if (closest && cd < ctrl * ctrl) {
+        ball.owner = closest.id;
+        ball.lastOwnerTeam = closest.team;
+        ball.vx = 0; ball.vy = 0;
+        // assistência: companheiro do humano recebeu o passe
+        if (assistPending && !assistPending.received) {
+          if (closest.id === assistPending.receiver && real < assistPending.until) assistPending.received = true;
+          else if (closest.team === 'opp') assistPending = null;
+        }
+      }
+    }
+
+    // Defesa do goleiro: bola solta indo para o próprio gol e perto do arqueiro
+    function gkSave() {
+      if (ball.owner) return;
+      const speed = Math.hypot(ball.vx, ball.vy);
+      if (speed < 7) return;
+      for (const team of ['own', 'opp']) {
+        const gk = (team === 'own' ? own : opp).find((p) => p.gk);
+        const goalY = team === 'own' ? M2D_FH : 0;
+        const toward = team === 'own' ? ball.vy > 0 : ball.vy < 0;
+        if (!toward || Math.abs(ball.y - goalY) > 20) continue;
+        const reach = 2.8 + gk.tackle / 100 * 2.4;
+        if (dist(gk, ball) < reach) {
+          if (Math.random() < 0.4 + gk.tackle / 320) {
+            ball.owner = gk.id; ball.vx = 0; ball.vy = 0; ball.lastOwnerTeam = team; ball.kickCd = 0.25;
+          } else {
+            ball.vy = -ball.vy * 0.55; ball.vx = (Math.random() - 0.5) * 28; ball.kickCd = 0.15;
+          }
+          lastShot = null;
+        }
+      }
+    }
+
+    function goalKick(team) {
+      const gk = (team === 'own' ? own : opp).find((p) => p.gk);
+      const goalY = team === 'own' ? M2D_FH : 0;
+      ball.x = M2D_FW / 2 + (Math.random() - 0.5) * 20;
+      ball.y = goalY + (team === 'own' ? -6 : 6);
+      gk.x = ball.x; gk.y = goalY + (team === 'own' ? -3 : 3);
+      ball.owner = gk.id; ball.vx = 0; ball.vy = 0; ball.lastOwnerTeam = team; ball.kickCd = 0.25;
+      assistPending = null;
+    }
+
+    function nearestOppDist(p) {
+      const foes = p.team === 'own' ? opp : own;
+      let m = Infinity;
+      for (const f of foes) m = Math.min(m, dist(p, f));
+      return m;
+    }
+    function nearest(list, target) {
+      let best = null, bd = Infinity;
+      for (const p of list) { const d = dist2(p, target); if (d < bd) { bd = d; best = p; } }
+      return best;
+    }
+
+    // ---------- IA ----------
+    function aiPlayer(p, dt) {
+      const owner = ball.owner ? players.find((x) => x.id === ball.owner) : null;
+      const hasBall = owner && owner.id === p.id;
+      const teamHasBall = owner && owner.team === p.team;
+      const fwd = p.team === 'own' ? -1 : 1;
+      const ownGoalY = p.team === 'own' ? M2D_FH : 0;
+      const foeGoalY = p.team === 'own' ? 0 : M2D_FH;
+      let tx = p.hx, ty = p.hy, sprint = false;
+
+      if (p.gk) { aiGoalie(p, dt); return; }
+
+      if (hasBall) {
+        // conduz em direção ao gol, desviando do marcador
+        const foe = nearest(p.team === 'own' ? opp : own, p);
+        tx = M2D_FW / 2 + (p.x - M2D_FW / 2) * 0.6;
+        ty = foeGoalY;
+        if (foe && dist(p, foe) < 8) { tx += (p.x - foe.x) * 1.5; }
+        sprint = true;
+        const dGoal = Math.abs(p.y - foeGoalY);
+        const central = Math.abs(p.x - M2D_FW / 2) < 19;
+        if (dGoal < 25 && central && Math.random() < 0.02 + p.fin / 6000) { aiShoot(p); return; }
+        if (Math.random() < 0.014 && nearestOppDist(p) < 6) { doPass(p); return; }
+      } else if (teamHasBall) {
+        // oferece linha de passe / avança
+        ty = p.hy + fwd * 12;
+        tx = p.hx + (ball.x - M2D_FW / 2) * 0.3;
+      } else {
+        // defende: o mais próximo pressiona, os outros marcam zona goalside
+        const chaser = nearest((p.team === 'own' ? own : opp).filter((x) => !x.gk), ball);
+        const press = chaser && chaser.id === p.id;
+        if (press) { tx = ball.x; ty = ball.y; sprint = true; }
+        else {
+          tx = (p.hx + ball.x) / 2;
+          ty = p.hy + (ownGoalY - p.hy) * 0.12 * (ballInOwnHalf(p) ? 1.6 : 0.4);
+        }
+      }
+      steer(p, tx, ty, sprint, dt);
+    }
+
+    function ballInOwnHalf(p) {
+      return p.team === 'own' ? ball.y > M2D_FH / 2 : ball.y < M2D_FH / 2;
+    }
+
+    function aiShoot(p) {
+      const foeGoalY = p.team === 'own' ? 0 : M2D_FH;
+      const tx = M2D_FW / 2 + (Math.random() - 0.5) * (M2D_GOAL_W - 2);
+      let dx = tx - p.x, dy = foeGoalY - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const spread = (1 - p.fin / 100) * 0.2;
+      const ang = Math.atan2(dy, dx) + (Math.random() - 0.5) * spread;
+      const power = 50 + p.fin / 100 * 20;
+      ball.vx = Math.cos(ang) * power; ball.vy = Math.sin(ang) * power;
+      ball.owner = null; ball.kickCd = 0.25; ball.lastOwnerTeam = p.team;
+      lastShot = { by: p.id, human: false, team: p.team };
+    }
+
+    function aiGoalie(p, dt) {
+      const goalY = p.team === 'own' ? M2D_FH : 0;
+      const lineY = goalY + (p.team === 'own' ? -3.5 : 3.5);
+      let tx = m2dClamp(ball.x, M2D_FW / 2 - M2D_GOAL_W / 2, M2D_FW / 2 + M2D_GOAL_W / 2);
+      // sai um pouco se a bola está muito perto
+      const near = Math.abs(ball.y - goalY) < 20 && ballInOwnHalf(p);
+      let ty = lineY + (near ? (ball.y - lineY) * 0.25 : 0);
+      steer(p, tx, ty, near, dt, 0.85);
+    }
+
+    function steer(p, tx, ty, sprint, dt, speedMul = 1) {
+      let dx = tx - p.x, dy = ty - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const desired = d < 0.4 ? 0 : 1;
+      const maxSpd = (13 + p.pace / 100 * 9) * (sprint ? 1.28 : 1) * speedMul;
+      const ax = dx / d * maxSpd * desired, ay = dy / d * maxSpd * desired;
+      p.vx += (ax - p.vx) * Math.min(1, dt * 8);
+      p.vy += (ay - p.vy) * Math.min(1, dt * 8);
+    }
+
+    function controlUser(p, dt) {
+      const k = keyVec();
+      let mvx = input.mvx, mvy = input.mvy, sprint = input.sprint;
+      if (k) { mvx = k.x; mvy = k.y; sprint = sprint || k.sprint; }
+      const mag = Math.hypot(mvx, mvy);
+      // sem comando do jogador: o astro joga sozinho (IA). Toque assume o controle.
+      if (mag <= 0.05) { aiPlayer(p, dt); return; }
+      const maxSpd = (13 + p.pace / 100 * 9) * (sprint ? 1.3 : 1);
+      const ax = mvx / mag * maxSpd * Math.min(1, mag), ay = mvy / mag * maxSpd * Math.min(1, mag);
+      p.vx += (ax - p.vx) * Math.min(1, dt * 10);
+      p.vy += (ay - p.vy) * Math.min(1, dt * 10);
+    }
+
+    // ---------- Update ----------
+    function update(dt) {
+      if (kickoffFreeze > 0) { kickoffFreeze -= dt; return; }
+      real += dt;
+      clock = Math.min(90, real / M2D_MATCH_SECONDS * 90);
+
+      // auto-switch: controla o dono (se own) ou o mais próximo da bola
+      const owner = ball.owner ? players.find((x) => x.id === ball.owner) : null;
+      if (owner && owner.team === 'own' && !owner.gk) userId = owner.id;
+      else if (!owner || owner.team === 'opp') {
+        const near = nearest(ownOutfield(), ball);
+        if (near && dist(near, ball) < 22) userId = near.id;
+      }
+
+      for (const p of players) {
+        if (p.id === userId && !p.gk) controlUser(p, dt);
+        else aiPlayer(p, dt);
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.x = m2dClamp(p.x, 1, M2D_FW - 1);
+        p.y = m2dClamp(p.y, 1, M2D_FH - 1);
+      }
+
+      // desarmes
+      if (owner) {
+        const foes = owner.team === 'own' ? opp : own;
+        for (const f of foes) {
+          if (f.gk) continue;
+          if (dist(f, owner) < M2D_PLAYER_R + 1.4) {
+            const chance = 0.5 + (f.tackle - owner.drib) / 200;
+            if (Math.random() < chance * dt * 3.2) {
+              ball.owner = f.id; ball.lastOwnerTeam = f.team; ball.kickCd = 0.12;
+              assistPending = null;
+              break;
+            }
+          }
+        }
+      }
+
+      // bola
+      if (ball.kickCd > 0) ball.kickCd -= dt;
+      const cur = ball.owner ? players.find((x) => x.id === ball.owner) : null;
+      if (cur) {
+        // drible: bola à frente do condutor no sentido do movimento
+        const spd = Math.hypot(cur.vx, cur.vy);
+        let dirx = spd > 0.5 ? cur.vx / spd : (cur.team === 'own' ? 0 : 0);
+        let diry = spd > 0.5 ? cur.vy / spd : (cur.team === 'own' ? -1 : 1);
+        const lead = M2D_PLAYER_R + M2D_BALL_R + 0.4;
+        ball.x = cur.x + dirx * lead; ball.y = cur.y + diry * lead;
+        ball.vx = cur.vx; ball.vy = cur.vy;
+      } else {
+        ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+        ball.vx *= Math.pow(0.14, dt); ball.vy *= Math.pow(0.14, dt);
+        // paredes laterais
+        if (ball.x < M2D_BALL_R) { ball.x = M2D_BALL_R; ball.vx *= -0.5; }
+        if (ball.x > M2D_FW - M2D_BALL_R) { ball.x = M2D_FW - M2D_BALL_R; ball.vx *= -0.5; }
+        gkSave();
+        tryPossession();
+      }
+
+      checkBallBounds();
+
+      // meio-tempo
+      if (!halftimeShown && clock >= 45) { halftimeShown = true; flash('Intervalo', 1.1); kickoff('own'); }
+      if (clock >= 90) finish();
+    }
+
+    function checkBallBounds() {
+      if (ball.owner) return;
+      const cx = M2D_FW / 2;
+      const inGoalX = Math.abs(ball.x - cx) < M2D_GOAL_W / 2;
+      if (ball.y <= 0.1) {
+        if (inGoalX) registerGoal('own'); // gol no gol de cima
+        else goalKick('opp');             // tiro de meta adversário
+      } else if (ball.y >= M2D_FH - 0.1) {
+        if (inGoalX) registerGoal('opp'); // seu gol
+        else goalKick('own');
+      }
+    }
+
+    function registerGoal(team) {
+      if (team === 'own') {
+        scoreOwn++;
+        if (lastShot && lastShot.team === 'own' && lastShot.human) playerGoals++;
+        if (assistPending && assistPending.received && lastShot && lastShot.by === assistPending.receiver) playerAssists++;
+        flash('GOOOL!', 1.4, config.own.color);
+        kickoff('opp');
+      } else {
+        scoreOpp++;
+        flash('Gol sofrido', 1.2, config.opp.color);
+        kickoff('own');
+      }
+      goalsEl.textContent = `${scoreOwn} - ${scoreOpp}`;
+      lastShot = null; assistPending = null;
+    }
+
+    function kickoff(who) {
+      for (const p of players) { p.x = p.hx; p.y = p.hy; p.vx = 0; p.vy = 0; }
+      ball.x = M2D_FW / 2; ball.y = M2D_FH / 2; ball.vx = 0; ball.vy = 0;
+      ball.owner = null; ball.kickCd = 0.3; ball.lastOwnerTeam = who;
+      // dá a posse a um jogador central do time "who"
+      const list = who === 'own' ? own : opp;
+      const mid = list.find((p) => p.role === 'MID') || list[3];
+      mid.x = M2D_FW / 2; mid.y = M2D_FH / 2 + (who === 'own' ? 2 : -2);
+      ball.owner = mid.id;
+      kickoffFreeze = 0.5;
+      userId = own[starIdx].id;
+    }
+
+    function flash(text, secs, color) {
+      flashEl.textContent = text;
+      flashEl.style.color = color || '#fff';
+      flashEl.classList.add('show');
+      flashUntil = real + secs;
+    }
+
+    // ---------- Render ----------
+    function draw() {
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, cw, ch);
+      drawPitch();
+      // sombra da bola + jogadores
+      for (const p of players) drawShadow(p.x, p.y, M2D_PLAYER_R);
+      drawShadow(ball.x, ball.y, M2D_BALL_R);
+      for (const p of players) drawPlayer(p);
+      drawBall();
+      ctx.restore();
+      if (real > flashUntil) flashEl.classList.remove('show');
+      clockEl.textContent = `${Math.floor(clock)}'`;
+      updateBtnLabels();
+    }
+
+    function drawPitch() {
+      const x0 = sx(0), y0 = sy(0), w = M2D_FW * scale, h = M2D_FH * scale;
+      // grama com listras
+      const stripes = 12;
+      for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#2f8f43' : '#2a833c';
+        ctx.fillRect(x0, y0 + h / stripes * i, w, h / stripes + 1);
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+      // borda
+      ctx.strokeRect(x0, y0, w, h);
+      // meio
+      ctx.beginPath(); ctx.moveTo(x0, sy(M2D_FH / 2)); ctx.lineTo(x0 + w, sy(M2D_FH / 2)); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx(M2D_FW / 2), sy(M2D_FH / 2), 9.15 * scale, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx(M2D_FW / 2), sy(M2D_FH / 2), 0.9, 0, 7); ctx.fillStyle = '#fff'; ctx.fill();
+      // áreas
+      const boxW = 40, boxH = 16, sixW = 18, sixH = 5.5;
+      const bx = (M2D_FW - boxW) / 2, sxx = (M2D_FW - sixW) / 2;
+      ctx.strokeRect(sx(bx), sy(0), boxW * scale, boxH * scale);
+      ctx.strokeRect(sx(sxx), sy(0), sixW * scale, sixH * scale);
+      ctx.strokeRect(sx(bx), sy(M2D_FH - boxH), boxW * scale, boxH * scale);
+      ctx.strokeRect(sx(sxx), sy(M2D_FH - sixH), sixW * scale, sixH * scale);
+      // gols
+      const gx = (M2D_FW - M2D_GOAL_W) / 2;
+      ctx.lineWidth = 4; ctx.strokeStyle = '#fff';
+      ctx.strokeRect(sx(gx), sy(-1.6), M2D_GOAL_W * scale, 1.6 * scale);
+      ctx.strokeRect(sx(gx), sy(M2D_FH), M2D_GOAL_W * scale, 1.6 * scale);
+      ctx.lineWidth = 2;
+    }
+
+    function drawShadow(x, y, r) {
+      ctx.fillStyle = 'rgba(0,0,0,.22)';
+      ctx.beginPath(); ctx.ellipse(sx(x) + 2, sy(y) + 3, r * scale, r * scale * 0.7, 0, 0, 7); ctx.fill();
+    }
+
+    function drawPlayer(p) {
+      const px = sx(p.x), py = sy(p.y), r = M2D_PLAYER_R * scale;
+      if (p.id === userId && !p.gk) {
+        ctx.beginPath(); ctx.arc(px, py, r + 5, 0, 7);
+        ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; ctx.stroke(); ctx.lineWidth = 2;
+      }
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 7);
+      ctx.fillStyle = p.gk ? '#111' : p.color; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.stroke();
+      if (p.isStar) { ctx.beginPath(); ctx.arc(px, py, r + 2, 0, 7); ctx.strokeStyle = '#ffe14d'; ctx.stroke(); ctx.strokeStyle = '#fff'; }
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r)}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.num, px, py);
+    }
+
+    function drawBall() {
+      const bx = sx(ball.x), by = sy(ball.y), r = M2D_BALL_R * scale * 1.3;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, 7);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke(); ctx.lineWidth = 2;
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(bx, by, r * 0.34, 0, 7); ctx.fill();
+    }
+
+    function updateBtnLabels() {
+      const owner = ball.owner ? players.find((x) => x.id === ball.owner) : null;
+      const attacking = owner && owner.team === 'own';
+      shootBtn.textContent = attacking ? '⚽' : '⇱';
+      shootBtn.classList.toggle('def', !attacking);
+      passBtn.textContent = attacking ? '↗' : '⤣';
+    }
+
+    // ---------- Loop ----------
+    let raf = 0, last = performance.now();
+    function loop(now) {
+      if (!running) return;
+      let dt = (now - last) / 1000; last = now;
+      dt = Math.min(dt, 0.05);
+      update(dt);
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+
+    function finish() {
+      if (finished) return;
+      finished = true; running = false;
+      cancelAnimationFrame(raf);
+      cleanup();
+      resolve({
+        teamGoals: scoreOwn, oppGoals: scoreOpp,
+        playerGoals, playerAssists, playerShots,
+        saves: config.player.position === 'GK' ? Math.round(scoreOpp === 0 ? 4 : 2) : 0,
+      });
+    }
+
+    function cleanup() {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('resize', resize);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    kickoff('own');
+    // pequena contagem antes do apito
+    flash('Vai começar!', 1.0);
+    raf = requestAnimationFrame(loop);
+  });
+}
+
+function abbr(name) {
+  const clean = name.replace(/\b(FC|CF|SC|AC|de|da|do|of)\b/gi, '').trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1].slice(0, 2)).toUpperCase();
+  return clean.slice(0, 3).toUpperCase();
+}
+
 // ==== src/ui/app.js ====
 // Interface do Modo Carreira — SPA responsiva (celular e PC).
+
 
 
 
@@ -3455,11 +4286,12 @@ function renderOverview(el) {
       </div>
       <div class="card">
         <h3>Próximo jogo <span class="section-tag">agenda</span></h3>
-        <div style="text-align:center;padding:8px 0 14px">
+        <div style="text-align:center;padding:8px 0 12px">
           <div style="font-size:1.4rem;font-weight:900">${fx ? fx.desc : '—'}</div>
           <div class="muted" style="font-size:.85rem;margin-top:2px">${fx ? fx.comp : ''}</div>
         </div>
-        <h4 class="faint" style="text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Temporada ${G.seasonYear}</h4>
+        ${getPlayableMatch(G) ? '<button class="play-cta" id="btn-play2d">🎮 Jogar em 2D</button>' : (p.injury ? '<p class="faint" style="text-align:center;font-size:.8rem">🤕 Lesionado — sem jogos.</p>' : '')}
+        <h4 class="faint" style="text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Temporada ${G.seasonYear}</h4>
         <div class="tiles">
           <div class="tile"><div class="t-val">${s.apps}</div><div class="t-label">Jogos</div></div>
           <div class="tile green"><div class="t-val">${s.goals}</div><div class="t-label">Gols</div></div>
@@ -3483,6 +4315,9 @@ function renderOverview(el) {
       <div class="grid2">${attrColumns(p)}</div>
     </div>
     ${retireCard()}`;
+
+  const playBtn = $('#btn-play2d');
+  if (playBtn) playBtn.onclick = () => launchMatch2D();
 
   const picker = $('#step-picker');
   if (picker) {
@@ -3928,6 +4763,59 @@ function emptyState(emoji, text) {
 }
 
 // ---------------- Avançar semana + eventos ----------------
+
+// Lança a partida jogável em 2D e injeta o resultado na semana da carreira.
+async function launchMatch2D() {
+  const m = getPlayableMatch(G);
+  if (!m) { toast('Sem jogo para disputar esta semana.'); return; }
+  const p = G.player;
+  const scr = $('#screen-match2d');
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+  scr.classList.add('active');
+
+  const config = {
+    player: { name: fullName(p), attrs: p.attrs, position: p.position, shirt: p.shirt },
+    own: { name: m.ownName, color: m.ownColor },
+    opp: { name: m.oppName, color: m.oppColor, str: m.oppStr },
+    teamStr: m.teamStr,
+    comp: m.comp,
+    stadium: m.stadium,
+    isHome: m.isHome,
+  };
+
+  let outcome;
+  try {
+    outcome = await playMatch2D(scr, config);
+  } catch (err) {
+    outcome = null;
+  }
+  scr.classList.remove('active');
+  scr.innerHTML = '';
+
+  if (!outcome) { showCareer(); return; }
+
+  // injeta o resultado jogado na próxima partida da semana
+  const events = advanceWeek(G, { play: {
+    teamGoals: outcome.teamGoals,
+    oppGoals: outcome.oppGoals,
+    playerGoals: outcome.playerGoals,
+    playerAssists: outcome.playerAssists,
+    playerShots: outcome.playerShots,
+    saves: outcome.saves,
+    oppClubId: m.oppClubId,
+  } });
+  for (const e of events) {
+    if (e.type === 'match') {
+      G.matchLog = G.matchLog || [];
+      G.matchLog.push(e.report);
+      if (G.matchLog.length > 120) G.matchLog.shift();
+    }
+  }
+  saveToStorage(G);
+  showCareer();
+  eventQueue = events.filter((e) => ['match', 'promotion', 'offers', 'callup', 'title', 'award', 'released', 'newSeason', 'retired', 'recovered', 'growth', 'qualified', 'limitbreak'].includes(e.type));
+  showNextEvent();
+}
 
 function doAdvance(weeks) {
   const btn = $('#btn-advance');

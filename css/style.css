@@ -487,6 +487,66 @@ select.inline option, select option { background: #14213a; color: var(--text); }
 .event-line.gold-ev { border: 1.5px solid var(--gold); background: linear-gradient(180deg, #ffcb3d18, var(--card2)); color: var(--gold); font-weight: 800; }
 .event-emoji { font-size: 2.6rem; display: block; margin-bottom: 8px; }
 
+/* ---------- Partida 2D (arcade) ---------- */
+#screen-match2d { position: fixed; inset: 0; z-index: 60; background: #06110a; display: none; }
+#screen-match2d.active { display: block; }
+.m2d-wrap { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.m2d-wrap canvas { position: absolute; inset: 0; display: block; }
+.m2d-hud {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+  padding: 8px calc(10px + env(safe-area-inset-right)) 8px calc(10px + env(safe-area-inset-left));
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  background: linear-gradient(180deg, #000a, transparent);
+  pointer-events: none;
+}
+.m2d-score { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.05rem; }
+.m2d-team { letter-spacing: .5px; }
+.m2d-goals { background: #000a; border-radius: 8px; padding: 3px 12px; font-size: 1.2rem; }
+.m2d-clock { position: absolute; right: 12px; top: 8px; background: #000a; border-radius: 8px; padding: 3px 10px; font-weight: 800; font-size: .95rem; }
+.m2d-comp { position: absolute; left: 12px; top: 10px; font-size: .7rem; color: var(--muted); max-width: 40vw; }
+.m2d-flash {
+  position: absolute; top: 34%; left: 0; right: 0; z-index: 4; text-align: center;
+  font-size: clamp(2rem, 11vw, 4rem); font-weight: 900; letter-spacing: 1px;
+  text-shadow: 0 4px 20px #000, 0 0 30px #000; opacity: 0; transition: opacity .2s ease;
+  pointer-events: none;
+}
+.m2d-flash.show { opacity: 1; animation: m2d-pop .4s ease; }
+@keyframes m2d-pop { from { transform: scale(.6); } to { transform: scale(1); } }
+.m2d-controls { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.m2d-joy {
+  position: absolute; left: calc(16px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 116px; height: 116px; border-radius: 50%;
+  background: radial-gradient(circle, #ffffff1c, #ffffff0a); border: 2px solid #ffffff33;
+  pointer-events: auto; touch-action: none;
+}
+.m2d-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px;
+  border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #cfe); box-shadow: 0 4px 10px #0008; }
+.m2d-buttons { position: absolute; right: calc(16px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 150px; height: 150px; pointer-events: none; }
+.m2d-btn {
+  position: absolute; width: 60px; height: 60px; border-radius: 50%; border: none;
+  font-size: 1.5rem; font-weight: 900; color: #06130b; cursor: pointer; pointer-events: auto;
+  box-shadow: 0 5px 14px #0007; font-family: inherit; touch-action: none;
+}
+.m2d-btn:active { transform: scale(.9); }
+.m2d-shoot { right: 4px; top: 42px; background: linear-gradient(135deg, #ff8a3d, #ff5f4d); color: #2a0d00; font-size: 1.7rem; }
+.m2d-shoot.def { background: linear-gradient(135deg, #ff5f6d, #d63a6a); color: #fff; }
+.m2d-pass { right: 76px; top: 70px; background: linear-gradient(135deg, #35e08a, #23c46f); font-size: 1.7rem; }
+.m2d-sprint { right: 40px; top: 4px; width: 50px; height: 50px; background: linear-gradient(135deg, #38bdf8, #2b8fd6); color: #04121f; font-size: 1.3rem; }
+.m2d-switch { right: 92px; top: 8px; width: 44px; height: 44px; background: #ffffff22; color: #fff; border: 1px solid #fff5; font-size: 1.1rem; box-shadow: none; }
+.m2d-quit { position: absolute; right: 10px; bottom: calc(184px + env(safe-area-inset-bottom)); z-index: 4;
+  background: #000a; color: #fff; border: 1px solid #fff4; border-radius: 8px; padding: 6px 12px; font-size: .8rem; cursor: pointer; pointer-events: auto; }
+@media (min-width: 760px) { .m2d-quit { bottom: auto; top: 44px; } }
+
+/* botão "Jogar partida" no hub */
+.play-cta {
+  display: block; width: 100%; margin-top: 8px;
+  background: linear-gradient(135deg, #ff8a3d, #ff5f4d); color: #2a0d00;
+  border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 1.05rem; font-weight: 900;
+  cursor: pointer; font-family: inherit; box-shadow: 0 8px 20px -8px #ff5f4d99;
+}
+.play-cta:active { transform: scale(.98); }
+
 /* ---------- Toast ---------- */
 .toast {
   position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-8px);

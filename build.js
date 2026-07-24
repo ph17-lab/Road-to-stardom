@@ -23,6 +23,7 @@ const MODULES = [
   'src/core/competitions.js',
   'src/core/engine.js',
   'src/core/save.js',
+  'src/game/match2d.js',
   'src/ui/app.js',
 ];
 

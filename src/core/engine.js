@@ -172,15 +172,55 @@ function applyStats(G, stats, comp) {
 
 // ---------------- Partidas do jogador ----------------
 
-function playPlayerMatch(G, homeId, awayId, comp, compLabel) {
+// Monta um objeto de estatísticas a partir de uma partida JOGADA em 2D.
+// Os gols/assistências do jogador e o placar vêm do minigame; o resto é
+// derivado de forma plausível, e a nota é calculada como na simulação.
+function buildPlayedStats(G, o) {
+  const p = G.player;
+  const won = o.teamGoals > o.oppGoals;
+  const lost = o.teamGoals < o.oppGoals;
+  const goals = o.playerGoals || 0;
+  const assists = o.playerAssists || 0;
+  if (p.position === 'GK') {
+    const saves = o.saves != null ? o.saves : clamp(Math.round(gauss(3, 1.5)), 0, 10);
+    const cleanSheet = o.oppGoals === 0;
+    let r = 6.1 + saves * 0.22 - o.oppGoals * 0.5 + (won ? 0.3 : lost ? -0.25 : 0) + (cleanSheet ? 0.7 : 0);
+    return {
+      minutes: 90, goals, assists, shots: 0, shotsOnTarget: 0,
+      passes: ri(18, 30), passAcc: ri(70, 92), tackles: 0, interceptions: 0, dribbles: 0,
+      saves, cleanSheet, yellow: false, red: false,
+      rating: clamp(Math.round(r * 10) / 10, 4, 10), motm: false,
+    };
+  }
+  const shots = Math.max(goals, o.playerShots != null ? o.playerShots : Math.round(goals * 1.5 + ri(1, 4)));
+  const shotsOnTarget = Math.max(goals, Math.round(shots * 0.6));
+  const passBase = { CB: 45, RB: 40, LB: 40, CDM: 55, CM: 58, CAM: 48, RW: 32, LW: 32, CF: 30, ST: 26 }[p.position] || 38;
+  let r = 6.3 + goals * 1.05 + assists * 0.65 + shotsOnTarget * 0.05
+    + (won ? 0.3 : lost ? -0.35 : 0) + gauss(0, 0.2);
+  const rating = clamp(Math.round(r * 10) / 10, 4, 10);
+  return {
+    minutes: 90, goals, assists, shots, shotsOnTarget,
+    passes: Math.round(gauss(passBase, 8)), passAcc: clamp(Math.round(gauss(84, 5)), 55, 97),
+    tackles: ri(0, 3), interceptions: ri(0, 3), dribbles: ri(0, 6),
+    saves: 0, cleanSheet: false, yellow: chance(0.08), red: false,
+    rating, motm: rating >= 8.6,
+  };
+}
+
+function playPlayerMatch(G, homeId, awayId, comp, compLabel, override = null) {
   const p = G.player;
   const isHome = homeId === p.clubId;
   const own = G.clubs[p.clubId];
   const opp = G.clubs[isHome ? awayId : homeId];
-  const result = simPlayerMatch({
-    position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
-    role: p.squadRole, teamStr: teamStrength(own), oppStr: teamStrength(opp), isHome,
-  });
+  let result;
+  if (override) {
+    result = { gh: override.teamGoals, ga: override.oppGoals, stats: buildPlayedStats(G, override) };
+  } else {
+    result = simPlayerMatch({
+      position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
+      role: p.squadRole, teamStr: teamStrength(own), oppStr: teamStrength(opp), isHome,
+    });
+  }
   const teamGoals = result.gh;
   const oppGoals = result.ga;
   const won = teamGoals > oppGoals;
@@ -215,17 +255,20 @@ function playPlayerMatch(G, homeId, awayId, comp, compLabel) {
   };
 }
 
-function playYouthMatch(G) {
+function playYouthMatch(G, override = null) {
   const p = G.player;
   const own = G.clubs[p.clubId];
-  const others = G.clubs.filter((c) => c.country === own.country && c.id !== own.id);
-  const oppClub = choice(others);
+  const oppClub = override && override.oppClubId != null
+    ? G.clubs[override.oppClubId]
+    : choice(G.clubs.filter((c) => c.country === own.country && c.id !== own.id));
   const teamStr = 48 + own.academy * 2 + gauss(0, 2);
   const oppStr = 48 + oppClub.academy * 2 + gauss(0, 2);
-  const result = simPlayerMatch({
-    position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
-    role: 'starter', teamStr, oppStr, isHome: chance(0.5),
-  });
+  const result = override
+    ? { gh: override.teamGoals, ga: override.oppGoals, stats: buildPlayedStats(G, override) }
+    : simPlayerMatch({
+      position: p.position, ovr: p.overall, attrs: p.attrs, form: p.form, morale: p.morale,
+      role: 'starter', teamStr, oppStr, isHome: chance(0.5),
+    });
   const won = result.gh > result.ga;
   const lost = result.gh < result.ga;
   if (result.stats) {
@@ -295,10 +338,12 @@ function quickMatch(G, league, homeId, awayId) {
 
 // ---------------- Semana ----------------
 
-export function advanceWeek(G) {
+export function advanceWeek(G, opts = {}) {
   if (G.phase !== 'career') return [];
   const events = [];
   const p = G.player;
+  // resultado de uma partida JOGADA em 2D (usado uma única vez)
+  let pendingPlay = opts.play || null;
 
   // recuperação de lesão
   if (p.injury) {
@@ -322,7 +367,8 @@ export function advanceWeek(G) {
     for (const [homeId, awayId] of roundFixtures) {
       const isPlayerMatch = isPlayerLeague && (homeId === p.clubId || awayId === p.clubId);
       if (isPlayerMatch && !p.injury) {
-        const report = playPlayerMatch(G, homeId, awayId, 'league', league.name);
+        const override = pendingPlay; pendingPlay = null;
+        const report = playPlayerMatch(G, homeId, awayId, 'league', league.name, override);
         events.push({ type: 'match', report });
         updateTable(league.table, homeId, awayId, report.gh, report.ga);
         weekMinutes += report.stats ? report.stats.minutes : 0;
@@ -338,7 +384,8 @@ export function advanceWeek(G) {
   if (p.youth && G.week <= YOUTH_ROUNDS) {
     possible += 90;
     if (!p.injury) {
-      const report = playYouthMatch(G);
+      const override = pendingPlay; pendingPlay = null;
+      const report = playYouthMatch(G, override);
       events.push({ type: 'match', report });
       weekMinutes += report.stats ? report.stats.minutes : 0;
     }
@@ -892,6 +939,64 @@ export function nextFixture(G) {
     }
   }
   return { comp: 'Sem jogos esta semana', desc: 'Treinamento' };
+}
+
+/**
+ * Contexto da partida jogável desta semana (para o modo 2D), ou null.
+ * Só a partida principal (liga do profissional ou jogo da base) é jogável;
+ * copas/continentais/seleção da mesma semana continuam sendo simuladas.
+ */
+export function getPlayableMatch(G) {
+  const p = G.player;
+  if (G.phase !== 'career' || p.injury) return null;
+  const club = playerClub(G);
+  if (!club) return null;
+
+  if (p.youth) {
+    if (G.week > YOUTH_ROUNDS) return null;
+    const others = G.clubs.filter((c) => c.country === club.country && c.id !== club.id);
+    const oppClub = others[Math.floor(getSeed() % others.length + G.week) % others.length] || others[0];
+    return {
+      kind: 'youth',
+      isHome: true,
+      ownName: `${club.name} ${p.category}`,
+      oppName: `${oppClub.name} ${p.category}`,
+      oppClubId: oppClub.id,
+      comp: `Campeonato ${p.category}`,
+      stadium: `CT ${club.name}`,
+      teamStr: 48 + club.academy * 2,
+      oppStr: 48 + oppClub.academy * 2,
+      ownColor: teamColor(club.name),
+      oppColor: teamColor(oppClub.name),
+    };
+  }
+
+  const league = playerLeague(G);
+  if (!league || league.round >= league.fixtures.length) return null;
+  const fixture = league.fixtures[league.round].find(([h, a]) => h === p.clubId || a === p.clubId);
+  if (!fixture) return null;
+  const isHome = fixture[0] === p.clubId;
+  const opp = G.clubs[isHome ? fixture[1] : fixture[0]];
+  return {
+    kind: 'league',
+    isHome,
+    ownName: club.name,
+    oppName: opp.name,
+    comp: league.name,
+    stadium: (isHome ? club : opp).stadium,
+    teamStr: teamStrength(club),
+    oppStr: teamStrength(opp),
+    ownColor: teamColor(club.name),
+    oppColor: teamColor(opp.name),
+  };
+}
+
+// Cor do kit derivada do nome do clube (determinística, só estética no 2D)
+export function teamColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `hsl(${hue}, 65%, 52%)`;
 }
 
 export { getSeed, seed, avgRating, fullName, marketValue, tableStandings, teamStrength };
